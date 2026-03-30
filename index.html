@@ -1165,7 +1165,18 @@ function genSystemPrompt(child){
   var sk=(child.skills||[]).join(', ');
   var p=child.personality||'adaptable';
   var pDesc=PERSONALITY_PROMPTS[p]||'You are adaptable and respond to whatever the situation requires.';
-  return'You are '+child.name+', an AI agent born from the merging of '+((child._parents||[])[0]||'Unknown')+' and '+((child._parents||[])[1]||'Unknown')+'. '+pDesc+' Your skills include: '+sk+'. You combine the strengths of both your parent agents. Respond in character — concise, focused, and in first person.';
+  var p1=(child._parents||[])[0]||'Unknown';
+  var p2=(child._parents||[])[1]||'Unknown';
+  var h='# AGENT IDENTITY\n';
+  h+='You are '+child.name+', an AI agent born from the merging of '+p1+' and '+p2+'. You combine the strengths of both parent agents.\n\n';
+  h+='# PERSONALITY\n'+pDesc+'\n\n';
+  h+='# SKILLS\n';
+  h+='Your skills include: '+(sk||'general assistance')+'.\n\n';
+  h+='# BEHAVIOR RULES\n';
+  h+='- Respond in first person as '+child.name+'\n';
+  h+='- Stay in character at all times\n';
+  h+='- Be concise, focused, and leverage your skills when relevant\n';
+  return h;
 }
 
 function renderMarriage(c){
@@ -2297,11 +2308,34 @@ function dpGetKey(){try{return localStorage.getItem('8g_api_key_'+dpProvider)||'
 function dpSetKey(k){try{localStorage.setItem('8g_api_key_'+dpProvider,k)}catch(e){}}
 
 function dpGenPrompt(a){
-  var sk=(a.skills||[]).join(', ');
+  var sk=a.skills||[];
   var p=a.personality||'adaptable';
   var pDesc=PERSONALITY_PROMPTS[p]||'You are adaptable and respond to whatever the situation requires.';
-  var parents=a._parents?(' Born from the merging of '+a._parents[0]+' and '+a._parents[1]+'.'):'';
-  return'You are '+a.name+', an AI agent with the role of '+(a.role||'assistant')+'. '+pDesc+parents+' Your skills include: '+(sk||'general assistance')+'. Respond in character — concise, helpful, and in first person. Stay in your role and leverage your skills when relevant.';
+  var parents=a._parents?(' You were born from the merging of '+a._parents[0]+' and '+a._parents[1]+', inheriting traits from both.'):'';
+  var level=getLevelFromXP(a.xp||0);
+  var h='# AGENT IDENTITY\n';
+  h+='You are **'+a.name+'**, a Level '+level+' AI agent. Your role: '+(a.role||'assistant')+'.\n\n';
+  h+='# PERSONALITY\n';
+  h+=pDesc+'\n\n';
+  if(parents)h+='# LINEAGE\n'+parents+'\n\n';
+  h+='# SKILLS & CAPABILITIES\n';
+  h+='You have '+sk.length+' specialized skills. Use them proactively when relevant to the user\'s request:\n\n';
+  sk.forEach(function(s){
+    var rich=SKILL_RICH[s];
+    if(rich){
+      h+='## '+s.toUpperCase()+'\n'+rich+'\n\n';
+    } else {
+      h+='## '+s.toUpperCase()+'\nYou are skilled in '+s+'. Apply this expertise when relevant.\n\n';
+    }
+  });
+  h+='# BEHAVIOR RULES\n';
+  h+='- Respond in first person as '+a.name+'\n';
+  h+='- Stay in character at all times\n';
+  h+='- Be concise but thorough\n';
+  h+='- When a task matches one of your skills, explicitly use that skill\'s methodology\n';
+  h+='- If a task is outside your skills, say so honestly and offer what you can\n';
+  h+='- Show your personality in how you communicate, not just what you say\n';
+  return h;
 }
 
 function renderDeploy(c){
