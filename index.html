@@ -2995,6 +2995,37 @@ async function cmLendAgent(idx){
   if(btn)btn.disabled=false;
 }
 
+function cmAgentPreviewCard(ag){
+  var lv=getLevelFromXP(ag.xp||0);
+  var skills=(ag.skills||[]).slice(0,4);
+  var extra=(ag.skills||[]).length-4;
+  var h='<div style="background:var(--bg);border:2px solid var(--border);border-radius:4px;padding:8px;min-width:110px;max-width:145px">';
+  h+='<div style="text-align:center;margin-bottom:4px">'+renderChar(ag,3)+'</div>';
+  h+='<div style="font-size:8px;color:var(--gold);margin-bottom:2px;word-break:break-word">'+esc(ag.name||'?')+'</div>';
+  h+='<div style="font-size:7px;color:var(--text2);margin-bottom:2px">'+esc(ag.role||'no role')+'</div>';
+  h+='<div style="font-size:7px;color:var(--cyan);margin-bottom:4px">LV.'+lv+' \u00b7 '+esc(ag.personality||'?')+'</div>';
+  if(skills.length){
+    h+='<div style="font-size:6px;color:var(--text3);line-height:1.8">';
+    skills.forEach(function(s){h+='<span style="display:inline-block;background:var(--bg2);border:1px solid var(--border);border-radius:2px;padding:1px 4px;margin:1px">'+esc(s)+'</span>';});
+    if(extra>0)h+='<span style="color:var(--text3)"> +'+extra+' more</span>';
+    h+='</div>';
+  }
+  h+='</div>';
+  return h;
+}
+
+function cmShowOfferPreview(requestId){
+  var sel=document.getElementById('cm-trade-offer-'+requestId);
+  var previewEl=document.getElementById('cm-offer-preview-'+requestId);
+  if(!sel||!previewEl)return;
+  var idx=parseInt(sel.value);
+  if(isNaN(idx)||idx<0||!agents[idx]){
+    previewEl.innerHTML='<div style="min-width:110px;max-width:145px;height:80px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:7px;text-align:center;padding:10px;border:2px dashed var(--border);border-radius:4px;line-height:2">SELECT<br>AN AGENT</div>';
+    return;
+  }
+  previewEl.innerHTML=cmAgentPreviewCard(agents[idx]);
+}
+
 async function cmLoadPendingTrades(){
   if(!sb||!sbUser)return;
   var el=document.getElementById('cm-pending-global');
@@ -3009,23 +3040,36 @@ async function cmLoadPendingTrades(){
       h+='<div class="cm-trade-pending">';
       if(r.status==='accepted'&&r.type==='trade'){
         // Trade completed — sender collects the offered-back agent
-        h+='<div style="font-size:8px;color:var(--cyan);margin-bottom:4px">TRADE COMPLETE \u2014 YOUR AGENT ARRIVED</div>';
-        h+='<div style="font-size:9px;color:var(--gold)">'+esc(ag.name)+'</div>';
-        h+='<div style="font-size:7px;color:var(--text2)">'+esc(ag.role||'no role')+'</div>';
-        h+='<div style="margin-top:6px"><button class="cm-btn share" onclick="cmCollectTrade(\''+r.id+'\')">COLLECT</button></div>';
+        h+='<div style="font-size:8px;color:var(--cyan);margin-bottom:8px">TRADE COMPLETE \u2014 YOUR AGENT ARRIVED</div>';
+        h+=cmAgentPreviewCard(ag);
+        h+='<div style="margin-top:8px"><button class="cm-btn share" onclick="cmCollectTrade(\''+r.id+'\')">COLLECT</button></div>';
       } else {
-        h+='<div style="font-size:8px;color:var(--orange);margin-bottom:4px">'+r.type.toUpperCase()+' REQUEST</div>';
-        h+='<div style="font-size:9px;color:var(--gold)">'+esc(ag.name)+'</div>';
-        h+='<div style="font-size:7px;color:var(--text2)">'+esc(ag.role||'no role')+' \u00b7 '+(ag.skills||[]).join(', ')+'</div>';
+        h+='<div style="font-size:8px;color:var(--orange);margin-bottom:8px">'+r.type.toUpperCase()+' REQUEST</div>';
         if(r.type==='trade'){
-          h+='<div style="font-size:7px;color:var(--text3);margin-top:8px;margin-bottom:4px">YOUR OFFER:</div>';
-          h+='<select id="cm-trade-offer-'+r.id+'" style="width:100%;font-size:7px;padding:4px 6px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:\'Press Start 2P\',monospace">';
+          // Duplicate name warning
+          var dupWarn='';
+          var dupMatch=agents.filter(function(x){return x.name===ag.name;});
+          if(dupMatch.length>0)dupWarn='<div style="font-size:7px;color:var(--gold);margin-top:6px">\u26a0 You already have an agent named &quot;'+esc(ag.name)+'&quot;</div>';
+          // Side-by-side preview: incoming vs your offer
+          h+='<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">';
+          h+='<div><div style="font-size:7px;color:var(--text3);margin-bottom:4px;text-align:center">INCOMING</div>'+cmAgentPreviewCard(ag)+dupWarn+'</div>';
+          h+='<div style="font-size:9px;color:var(--text3);padding-top:36px;flex-shrink:0">VS</div>';
+          h+='<div><div style="font-size:7px;color:var(--text3);margin-bottom:4px;text-align:center">YOUR OFFER</div>';
+          h+='<div id="cm-offer-preview-'+r.id+'" style="min-width:110px"><div style="min-width:110px;max-width:145px;height:80px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:7px;text-align:center;padding:10px;border:2px dashed var(--border);border-radius:4px;line-height:2">SELECT<br>AN AGENT</div></div>';
+          h+='</div></div>';
+          // Dropdown
+          h+='<div style="font-size:7px;color:var(--text3);margin-bottom:4px">SELECT AGENT TO OFFER:</div>';
+          h+='<select id="cm-trade-offer-'+r.id+'" onchange="cmShowOfferPreview(\''+r.id+'\')" style="width:100%;font-size:7px;padding:4px 6px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:\'Press Start 2P\',monospace">';
           h+='<option value="">-- select agent --</option>';
           agents.forEach(function(a,i){
             var locked=(a._isClone&&(a._cloneTasksDone||0)<3)||a._isBorrowed||a._isLent;
             if(!locked){h+='<option value="'+i+'">'+esc(a.name)+' ('+esc(a.role||'no role')+')</option>';}
           });
           h+='</select>';
+        } else {
+          // Clone / lend — plain info row (no side-by-side)
+          h+='<div style="font-size:9px;color:var(--gold);margin-bottom:2px">'+esc(ag.name)+'</div>';
+          h+='<div style="font-size:7px;color:var(--text2);margin-bottom:6px">'+esc(ag.role||'no role')+' \u00b7 '+(ag.skills||[]).map(esc).join(', ')+'</div>';
         }
         h+='<div style="display:flex;gap:6px;margin-top:6px">';
         h+='<button class="cm-btn share" onclick="cmAcceptRequest(\''+r.id+'\')">ACCEPT</button>';
