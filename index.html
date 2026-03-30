@@ -307,7 +307,7 @@ body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospa
 .cm-user-input:focus{border-color:var(--gold)}
 .cm-user-input::placeholder{color:var(--text3)}
 .cm-trade-pending{background:var(--bg2);border:1px solid var(--orange);border-radius:4px;padding:10px;margin-bottom:8px}
-.cm-notif{background:rgba(255,204,68,0.08);border:1px solid var(--gold);border-radius:4px;padding:10px;margin-bottom:10px;font-size:8px;color:var(--gold);line-height:1.8}
+.cm-notif{display:inline-block;background:#e74c3c;color:#fff;font-size:6px;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;margin-left:5px;vertical-align:middle;font-family:'Press Start 2P',monospace}
 .ag-badge{position:absolute;top:4px;left:4px;font-size:6px;padding:2px 5px;border-radius:2px;z-index:2;font-family:'Press Start 2P',monospace;letter-spacing:0.5px}
 .ag-badge.clone{background:rgba(155,89,182,0.2);color:var(--purple);border:1px solid rgba(155,89,182,0.4)}
 .ag-badge.lent{background:rgba(255,204,68,0.15);color:var(--gold);border:1px solid rgba(255,204,68,0.3)}
@@ -347,7 +347,7 @@ body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospa
 <div class="mi" onclick="switchTab('growth')" data-tab="growth"><span class="ar">►</span> GROWTH</div>
 <div class="mi" onclick="switchTab('create')" data-tab="create"><span class="ar">►</span> CREATE</div>
 <div class="mi" onclick="switchTab('deploy')" data-tab="deploy"><span class="ar">►</span> DEPLOY</div>
-<div class="mi" onclick="switchTab('community')" data-tab="community"><span class="ar">►</span> COMMUNITY</div>
+<div class="mi" onclick="switchTab('community')" data-tab="community"><span class="ar">►</span> COMMUNITY<span id="cm-notif-badge" class="cm-notif" style="display:none">0</span></div>
 <div id="mf">8-GENTS V2.0</div>
 </div></div>
 <div id="content"><div id="ci">
@@ -2601,6 +2601,9 @@ async function authSubmit(){
     authUpdateUI();
     // New user: push defaults to cloud. Returning user: load their cloud data.
     if(authMode==='signup'){syncToCloud();}else{syncFromCloud();}
+    cmUpdateNotifBadge();
+    if(cmNotifTimer)clearInterval(cmNotifTimer);
+    cmNotifTimer=setInterval(cmUpdateNotifBadge,30000);
   }catch(e){err.textContent='Connection error'}
 }
 
@@ -2613,6 +2616,8 @@ async function authLogout(){
   try{localStorage.removeItem('8g2')}catch(e){}
   try{localStorage.removeItem('8g_custom_skills')}catch(e){}
   try{localStorage.removeItem('8g_xp_spent')}catch(e){}
+  if(cmNotifTimer){clearInterval(cmNotifTimer);cmNotifTimer=null;}
+  var _nb=document.getElementById('cm-notif-badge');if(_nb)_nb.style.display='none';
   mkDef();
   authUpdateUI();
   renderTab();
@@ -2648,6 +2653,9 @@ async function authInit(){
       sbUser=res.data.session.user;
       authUpdateUI();
       syncFromCloud();
+      cmUpdateNotifBadge();
+      if(cmNotifTimer)clearInterval(cmNotifTimer);
+      cmNotifTimer=setInterval(cmUpdateNotifBadge,30000);
     } else {
       authUpdateUI();
     }
@@ -2694,6 +2702,20 @@ save=function(){
 
 // ═══ COMMUNITY TAB ═══
 var cmSubTab='share';
+var cmNotifTimer=null;
+
+async function cmUpdateNotifBadge(){
+  var badge=document.getElementById('cm-notif-badge');
+  if(!badge)return;
+  if(!sb||!sbUser){badge.style.display='none';return}
+  try{
+    var r1=await sb.from('shared_agents').select('id',{count:'exact',head:true}).eq('to_user',sbUser.id).eq('status','pending');
+    var r2=await sb.from('friend_messages').select('id',{count:'exact',head:true}).eq('to_user',sbUser.id).eq('read',false);
+    var total=(r1.count||0)+(r2.count||0);
+    if(total>0){badge.textContent=total;badge.style.display='inline-block';}
+    else{badge.style.display='none';}
+  }catch(e){}
+}
 
 function renderCommunity(c){
   var h='';
@@ -2978,22 +3000,42 @@ async function cmLoadPendingTrades(){
   var el=document.getElementById('cm-pending-global');
   if(!el)return;
   try{
-    var res=await sb.from('shared_agents').select('*').eq('to_user',sbUser.id).in('type',['trade','share','lend']).eq('status','pending');
+    // Pending incoming requests + accepted trade returns ready to collect
+    var res=await sb.from('shared_agents').select('*').eq('to_user',sbUser.id).in('type',['trade','share','lend']).in('status',['pending','accepted']);
     if(!res.data||!res.data.length){el.innerHTML='<div style="color:var(--text3);font-size:8px">No pending requests.</div>';return}
     var h='';
     res.data.forEach(function(r){
       var ag=JSON.parse(r.agent_data);
       h+='<div class="cm-trade-pending">';
-      h+='<div style="font-size:8px;color:var(--orange);margin-bottom:4px">'+r.type.toUpperCase()+' REQUEST</div>';
-      h+='<div style="font-size:9px;color:var(--gold)">'+esc(ag.name)+'</div>';
-      h+='<div style="font-size:7px;color:var(--text2)">'+esc(ag.role||'no role')+' \u00b7 '+(ag.skills||[]).join(', ')+'</div>';
-      h+='<div style="display:flex;gap:6px;margin-top:6px">';
-      h+='<button class="cm-btn share" onclick="cmAcceptRequest(\''+r.id+'\')">ACCEPT</button>';
-      h+='<button class="cm-btn" style="color:var(--red);border-color:var(--red)" onclick="cmDeclineRequest(\''+r.id+'\')">DECLINE</button>';
-      h+='</div></div>';
+      if(r.status==='accepted'&&r.type==='trade'){
+        // Trade completed — sender collects the offered-back agent
+        h+='<div style="font-size:8px;color:var(--cyan);margin-bottom:4px">TRADE COMPLETE \u2014 YOUR AGENT ARRIVED</div>';
+        h+='<div style="font-size:9px;color:var(--gold)">'+esc(ag.name)+'</div>';
+        h+='<div style="font-size:7px;color:var(--text2)">'+esc(ag.role||'no role')+'</div>';
+        h+='<div style="margin-top:6px"><button class="cm-btn share" onclick="cmCollectTrade(\''+r.id+'\')">COLLECT</button></div>';
+      } else {
+        h+='<div style="font-size:8px;color:var(--orange);margin-bottom:4px">'+r.type.toUpperCase()+' REQUEST</div>';
+        h+='<div style="font-size:9px;color:var(--gold)">'+esc(ag.name)+'</div>';
+        h+='<div style="font-size:7px;color:var(--text2)">'+esc(ag.role||'no role')+' \u00b7 '+(ag.skills||[]).join(', ')+'</div>';
+        if(r.type==='trade'){
+          h+='<div style="font-size:7px;color:var(--text3);margin-top:8px;margin-bottom:4px">YOUR OFFER:</div>';
+          h+='<select id="cm-trade-offer-'+r.id+'" style="width:100%;font-size:7px;padding:4px 6px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:\'Press Start 2P\',monospace">';
+          h+='<option value="">-- select agent --</option>';
+          agents.forEach(function(a,i){
+            var locked=(a._isClone&&(a._cloneTasksDone||0)<3)||a._isBorrowed||a._isLent;
+            if(!locked){h+='<option value="'+i+'">'+esc(a.name)+' ('+esc(a.role||'no role')+')</option>';}
+          });
+          h+='</select>';
+        }
+        h+='<div style="display:flex;gap:6px;margin-top:6px">';
+        h+='<button class="cm-btn share" onclick="cmAcceptRequest(\''+r.id+'\')">ACCEPT</button>';
+        h+='<button class="cm-btn" style="color:var(--red);border-color:var(--red)" onclick="cmDeclineRequest(\''+r.id+'\')">DECLINE</button>';
+        h+='</div>';
+      }
+      h+='</div>';
     });
     el.innerHTML=h;
-  }catch(e){el.innerHTML='<div style="color:var(--red)">Error loading trades</div>'}
+  }catch(e){el.innerHTML='<div style="color:var(--red)">Error loading requests</div>'}
 }
 
 async function cmAcceptRequest(id){
@@ -3023,9 +3065,30 @@ async function cmAcceptRequest(id){
       await sb.from('shared_agents').update({status:'accepted'}).eq('id',id);
       alert(ag.name+' clone received! Locked until 3 tasks completed.');
     } else if(res.data.type==='trade'){
-      agents.push(ag);nxId++;save();
+      // Get the agent user is offering in return
+      var offerSel=document.getElementById('cm-trade-offer-'+id);
+      var offerIdx=offerSel?parseInt(offerSel.value):-1;
+      if(isNaN(offerIdx)||offerIdx<0||!agents[offerIdx]){
+        alert('Select an agent to trade.');
+        if(btn)btn.disabled=false;
+        return;
+      }
+      var offeredAgent=agents[offerIdx];
+      // Build clean copy of offered agent (strip _ fields) for sender
+      var cleanOffer={};
+      Object.keys(offeredAgent).forEach(function(k){if(k.charAt(0)!=='_'&&k!=='pinned')cleanOffer[k]=offeredAgent[k]});
+      // Add received agent — clean, fully editable, no clone flags
+      ag.xp=ag.xp||0;ag.level=getLevelFromXP(ag.xp);ag.state='idle';ag.task='';ag.output='';
+      ag.id='agent_'+String(nxId).padStart(2,'0');nxId++;
+      agents.push(ag);
+      // Remove offered agent from roster
+      agents.splice(offerIdx,1);
+      save();
+      // Insert row for original sender to collect their received agent
+      var fromUserId=res.data.from_user;
+      await sb.from('shared_agents').insert({from_user:sbUser.id,to_user:fromUserId,agent_data:JSON.stringify(cleanOffer),type:'trade',status:'accepted'});
       await sb.from('shared_agents').update({status:'accepted'}).eq('id',id);
-      alert('Trade accepted! '+ag.name+' has joined your roster.');
+      alert('Trade complete! '+ag.name+' has joined your roster. '+offeredAgent.name+' has been sent to your trade partner.');
     } else if(res.data.type==='lend'){
       // Borrowed: preserve lock + timer
       ag._isBorrowed=true;
@@ -3035,6 +3098,7 @@ async function cmAcceptRequest(id){
       await sb.from('shared_agents').update({status:'active'}).eq('id',id);
       alert(ag.name+' borrowed! Use for breeding or deploy. Returns automatically.');
     }
+    cmUpdateNotifBadge();
     renderCommunity(document.getElementById('cb'));
   }catch(e){alert('Error accepting: '+(e.message||'Unknown error'));if(btn)btn.disabled=false}
 }
@@ -3046,7 +3110,37 @@ async function cmDeclineRequest(id){
     await sb.from('shared_agents').update({status:'declined'}).eq('id',id);
     alert('Request declined.');
     cmLoadPendingTrades();
+    cmUpdateNotifBadge();
   }catch(e){alert('Error declining');if(btn)btn.disabled=false}
+}
+
+async function cmCollectTrade(id){
+  if(!sb||!sbUser)return;
+  var btn=event&&event.target;if(btn)btn.disabled=true;
+  try{
+    var res=await sb.from('shared_agents').select('*').eq('id',id).single();
+    if(!res.data){alert('Could not find trade record.');if(btn)btn.disabled=false;return}
+    var ag=JSON.parse(res.data.agent_data);
+    // Assign random look if needed
+    if(!ag.body||!ag.topColor){
+      ag.body=pick(BODIES);ag.gender=ag.gender||pick(GENDERS);ag.skin=pick(SKINS);
+      ag.hair=pick(HAIRSTYLES);ag.hairColor=pick(COLORS);ag.top=pick(TOPS);ag.bottom=pick(BOTTOMS);
+      ag.topColor=pick(COLORS);ag.bottomColor=pick(COLORS);ag.hat=pick(HATS);ag.hatColor=pick(COLORS);
+      ag.accessory=pick(ACCS);ag.accColor=pick(COLORS);ag.prop=pick(PROPS);
+    }
+    // Clean agent — fully owned, no lock flags
+    ag.id='agent_'+String(nxId).padStart(2,'0');
+    ag.xp=ag.xp||0;ag.level=getLevelFromXP(ag.xp);ag.state='idle';ag.task='';ag.output='';
+    ag.personality=ag.personality||pick(PERSONALITIES);
+    delete ag._isClone;delete ag._cloneTasksDone;delete ag._cloneFrom;
+    delete ag._isBorrowed;delete ag._isLent;delete ag._lentBy;
+    agents.push(ag);nxId++;save();
+    // Mark row as collected (remove from pending)
+    await sb.from('shared_agents').update({status:'collected'}).eq('id',id);
+    alert(ag.name+' has joined your roster!');
+    cmLoadPendingTrades();
+    cmUpdateNotifBadge();
+  }catch(e){alert('Error collecting agent: '+(e.message||'Unknown error'));if(btn)btn.disabled=false}
 }
 
 async function cmPublishSkill(idx){
@@ -3263,31 +3357,40 @@ async function cmLoadMessages(friendId){
     var r1=await sb.from('friend_messages').select('*').eq('from_user',sbUser.id).eq('to_user',friendId).order('created_at',{ascending:true}).limit(100);
     var r2=await sb.from('friend_messages').select('*').eq('from_user',friendId).eq('to_user',sbUser.id).order('created_at',{ascending:true}).limit(100);
     var msgs=((r1.data||[]).concat(r2.data||[])).sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at)});
-    var fn=cmChatFriend?cmChatFriend.username:'?';
-    var h='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-    h+='<div style="font-size:9px;color:var(--cyan)">CHAT: '+esc(fn)+'</div>';
-    h+='<button class="cm-btn" style="padding:2px 6px;font-size:7px;color:var(--text3)" onclick="cmCloseChat()">CLOSE</button>';
-    h+='</div>';
-    h+='<div id="cm-chat-msgs" style="max-height:300px;overflow-y:auto;margin-bottom:8px;display:flex;flex-direction:column;gap:6px">';
-    if(!msgs.length){h+='<div style="font-size:7px;color:var(--text3);text-align:center;padding:10px">No messages yet. Say hello!</div>'}
+    // Build messages HTML only
+    var msgsHtml='';
+    if(!msgs.length){msgsHtml+='<div style="font-size:7px;color:var(--text3);text-align:center;padding:10px">No messages yet. Say hello!</div>'}
     msgs.forEach(function(m){
       var isMe=m.from_user===sbUser.id;
       var t=new Date(m.created_at);
       var ts=t.getHours().toString().padStart(2,'0')+':'+t.getMinutes().toString().padStart(2,'0');
-      h+='<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+'">';
-      h+='<div style="max-width:85%;padding:6px 10px;border-radius:4px;font-size:8px;line-height:1.6;word-break:break-word;background:'+(isMe?'rgba(255,204,68,0.12)':'var(--bg2)')+';border:1px solid '+(isMe?'rgba(255,204,68,0.3)':'var(--border)')+'">'+esc(m.message)+'</div>';
-      h+='<div style="font-size:6px;color:var(--text3);margin-top:2px">'+ts+'</div>';
-      h+='</div>';
+      msgsHtml+='<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+'">';
+      msgsHtml+='<div style="max-width:85%;padding:6px 10px;border-radius:4px;font-size:8px;line-height:1.6;word-break:break-word;background:'+(isMe?'rgba(255,204,68,0.12)':'var(--bg2)')+';border:1px solid '+(isMe?'rgba(255,204,68,0.3)':'var(--border)')+'">'+esc(m.message)+'</div>';
+      msgsHtml+='<div style="font-size:6px;color:var(--text3);margin-top:2px">'+ts+'</div>';
+      msgsHtml+='</div>';
     });
-    h+='</div>';
-    h+='<div style="display:flex;gap:6px">';
-    h+='<input class="cm-user-input" id="cm-chat-input" placeholder="Type a message..." style="flex:1" onkeydown="if(event.key===\'Enter\')cmSendMessage()">';
-    h+='<button class="cm-btn share" onclick="cmSendMessage()" style="padding:5px 10px;font-size:8px">SEND</button>';
-    h+='</div>';
-    el.innerHTML=h;
-    el.style.display='block';
-    var msgsEl=document.getElementById('cm-chat-msgs');
-    if(msgsEl)msgsEl.scrollTop=msgsEl.scrollHeight;
+    var existingMsgs=document.getElementById('cm-chat-msgs');
+    if(existingMsgs){
+      // Refresh only: preserve the input field, just update messages
+      existingMsgs.innerHTML=msgsHtml;
+      existingMsgs.scrollTop=existingMsgs.scrollHeight;
+    } else {
+      // First open: render full chat UI
+      var fn=cmChatFriend?cmChatFriend.username:'?';
+      var h='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+      h+='<div style="font-size:9px;color:var(--cyan)">CHAT: '+esc(fn)+'</div>';
+      h+='<button class="cm-btn" style="padding:2px 6px;font-size:7px;color:var(--text3)" onclick="cmCloseChat()">CLOSE</button>';
+      h+='</div>';
+      h+='<div id="cm-chat-msgs" style="max-height:300px;overflow-y:auto;margin-bottom:8px;display:flex;flex-direction:column;gap:6px">'+msgsHtml+'</div>';
+      h+='<div style="display:flex;gap:6px">';
+      h+='<input class="cm-user-input" id="cm-chat-input" placeholder="Type a message..." style="flex:1" onkeydown="if(event.key===\'Enter\')cmSendMessage()">';
+      h+='<button class="cm-btn share" onclick="cmSendMessage()" style="padding:5px 10px;font-size:8px">SEND</button>';
+      h+='</div>';
+      el.innerHTML=h;
+      el.style.display='block';
+      var msgsEl=document.getElementById('cm-chat-msgs');
+      if(msgsEl)msgsEl.scrollTop=msgsEl.scrollHeight;
+    }
   }catch(e){el.innerHTML='<div style="color:var(--red);font-size:8px">Error loading messages</div>';el.style.display='block'}
 }
 
