@@ -1060,7 +1060,7 @@ function renderModalLineage(a){
     if(ag){h+='<div>'+renderChar(ag,2)+'</div>';}
     else{h+='<div style="height:48px;line-height:48px;color:var(--text3);font-size:8px">\u2753</div>';}
     h+='<div style="font-size:7px;color:'+(highlight?'var(--gold)':'var(--text)')+';margin-top:2px;word-break:break-word;line-height:1.4">'+esc(name)+'</div>';
-    h+='<div style="font-size:6px;color:var(--text3)">Lv.'+lv+' \u00b7 '+esc(pers)+'</div>';
+    h+='<div style="font-size:6px;color:var(--text2)">Lv.'+lv+' \u00b7 '+esc(pers)+'</div>';
     h+='</div>';
     return h;
   }
@@ -1432,8 +1432,26 @@ function wedConfirm(){
   if(!wedChild.name){alert('Name your offspring!');return}
   wedChild.id='agent_'+String(nxId).padStart(2,'0');
   nxId++;agents.push(wedChild);save();
+  // Auto-return borrowed parents after breeding
+  var borrowedReturned=[];
+  [wedP1,wedP2].forEach(function(pidx){
+    if(pidx>=0&&agents[pidx]&&agents[pidx]._isBorrowed){
+      borrowedReturned.push(agents[pidx].name);
+      if(sb&&sbUser){
+        sb.from('shared_agents').update({status:'returned'}).eq('to_user',sbUser.id).eq('type','lend').eq('status','active').then(function(){});
+      }
+    }
+  });
+  // Remove borrowed parents (splice in reverse index order)
+  var toRemove=[];
+  [wedP1,wedP2].forEach(function(pidx){if(pidx>=0&&agents[pidx]&&agents[pidx]._isBorrowed)toRemove.push(pidx);});
+  toRemove.sort(function(a,b){return b-a;});
+  toRemove.forEach(function(i){agents.splice(i,1);});
+  if(toRemove.length>0)save();
   wedStep=0;wedP1=-1;wedP2=-1;wedMode='';wedChild=null;wedSlot=0;wedRerolls=0;wedGmoChecked={};
-  alert(agents[agents.length-1].name+' has been born!');
+  var msg=agents[agents.length-1].name+' has been born!';
+  if(borrowedReturned.length>0)msg+='\n\nBorrowed agent(s) returned: '+borrowedReturned.join(', ');
+  alert(msg);
   switchTab('agents');
 }
 
@@ -2496,6 +2514,7 @@ function renderDeploy(c){
   h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'claude\')" style="font-size:8px;padding:7px 12px;background:rgba(230,126,34,0.12);color:#f0834a;border-color:#f0834a">OPEN IN CLAUDE</button>';
   h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'chatgpt\')" style="font-size:8px;padding:7px 12px;background:rgba(16,163,127,0.12);color:#10a37f;border-color:#10a37f">OPEN IN CHATGPT</button>';
   h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'perplexity\')" style="font-size:8px;padding:7px 12px;background:rgba(32,144,253,0.12);color:#2090fd;border-color:#2090fd">OPEN IN PERPLEXITY</button>';
+  h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'grok\')" style="font-size:8px;padding:7px 12px;background:rgba(255,255,255,0.05);color:#e0e0e0;border-color:#888">OPEN IN GROK</button>';
   h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'copy\')" style="font-size:8px;padding:7px 12px;color:var(--gold);border-color:var(--gold)">COPY PROMPT</button>';
   h+='</div></div>';
 
@@ -2633,9 +2652,15 @@ function dpLaunchPlatform(platform){
   if(platform==='claude'){
     window.open('https://claude.ai/new?q='+enc,'_blank');
   } else if(platform==='chatgpt'){
-    window.open('https://chat.openai.com/?prompt='+enc,'_blank');
+    window.open('https://chatgpt.com/?q='+enc,'_blank');
   } else if(platform==='perplexity'){
     window.open('https://perplexity.ai/?q='+enc,'_blank');
+  } else if(platform==='grok'){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){window.open('https://grok.com/chat','_blank');alert('Prompt copied! Paste it into Grok to begin.');});
+    } else {
+      window.open('https://grok.com/chat','_blank');
+    }
   } else if(platform==='copy'){
     if(navigator.clipboard&&navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(function(){alert('Prompt copied!')});
@@ -2722,6 +2747,10 @@ async function dpSend(){
     // Borrowed: auto-return after task completion
     if(a._isBorrowed){
       alert(a.name+' has completed a task and will now be returned to '+esc(a._lentBy||'owner')+'.');
+      // Notify lender via shared_agents status update
+      if(sb&&sbUser){
+        sb.from('shared_agents').update({status:'returned'}).eq('to_user',sbUser.id).eq('type','lend').eq('status','active').then(function(){});
+      }
       agents.splice(dpAgent,1);dpAgent=-1;dpMessages=[];
     }
     save();
@@ -3181,9 +3210,9 @@ function cmAgentPreviewCard(ag){
   h+='<div style="font-size:7px;color:var(--text2);margin-bottom:2px">'+esc(ag.role||'no role')+'</div>';
   h+='<div style="font-size:7px;color:var(--cyan);margin-bottom:4px">LV.'+lv+' \u00b7 '+esc(ag.personality||'?')+'</div>';
   if(skills.length){
-    h+='<div style="font-size:6px;color:var(--text3);line-height:1.8">';
+    h+='<div style="font-size:6px;color:var(--text2);line-height:1.8">';
     skills.forEach(function(s){h+='<span style="display:inline-block;background:var(--bg2);border:1px solid var(--border);border-radius:2px;padding:1px 4px;margin:1px">'+esc(s)+'</span>';});
-    if(extra>0)h+='<span style="color:var(--text3)"> +'+extra+' more</span>';
+    if(extra>0)h+='<span style="color:var(--text2)"> +'+extra+' more</span>';
     h+='</div>';
   }
   h+='</div>';
@@ -3196,7 +3225,7 @@ function cmShowOfferPreview(requestId){
   if(!sel||!previewEl)return;
   var idx=parseInt(sel.value);
   if(isNaN(idx)||idx<0||!agents[idx]){
-    previewEl.innerHTML='<div style="min-width:110px;max-width:145px;height:80px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:7px;text-align:center;padding:10px;border:2px dashed var(--border);border-radius:4px;line-height:2">SELECT<br>AN AGENT</div>';
+    previewEl.innerHTML='<div style="min-width:110px;max-width:145px;height:80px;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:7px;text-align:center;padding:10px;border:2px dashed var(--border);border-radius:4px;line-height:2">SELECT<br>AN AGENT</div>';
     return;
   }
   previewEl.innerHTML=cmAgentPreviewCard(agents[idx]);
@@ -3240,13 +3269,13 @@ async function cmLoadPendingTrades(){
           if(dupMatch.length>0)dupWarn='<div style="font-size:7px;color:var(--gold);margin-top:6px">\u26a0 You already have an agent named &quot;'+esc(ag.name)+'&quot;</div>';
           // Side-by-side preview: incoming vs your offer
           h+='<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">';
-          h+='<div><div style="font-size:7px;color:var(--text3);margin-bottom:4px;text-align:center">INCOMING</div>'+cmAgentPreviewCard(ag)+dupWarn+'</div>';
-          h+='<div style="font-size:9px;color:var(--text3);padding-top:36px;flex-shrink:0">VS</div>';
-          h+='<div><div style="font-size:7px;color:var(--text3);margin-bottom:4px;text-align:center">YOUR OFFER</div>';
-          h+='<div id="cm-offer-preview-'+r.id+'" style="min-width:110px"><div style="min-width:110px;max-width:145px;height:80px;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:7px;text-align:center;padding:10px;border:2px dashed var(--border);border-radius:4px;line-height:2">SELECT<br>AN AGENT</div></div>';
+          h+='<div><div style="font-size:7px;color:var(--text2);margin-bottom:4px;text-align:center">INCOMING</div>'+cmAgentPreviewCard(ag)+dupWarn+'</div>';
+          h+='<div style="font-size:9px;color:var(--text2);padding-top:36px;flex-shrink:0">VS</div>';
+          h+='<div><div style="font-size:7px;color:var(--text2);margin-bottom:4px;text-align:center">YOUR OFFER</div>';
+          h+='<div id="cm-offer-preview-'+r.id+'" style="min-width:110px"><div style="min-width:110px;max-width:145px;height:80px;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:7px;text-align:center;padding:10px;border:2px dashed var(--border);border-radius:4px;line-height:2">SELECT<br>AN AGENT</div></div>';
           h+='</div></div>';
           // Dropdown
-          h+='<div style="font-size:7px;color:var(--text3);margin-bottom:4px">SELECT AGENT TO OFFER:</div>';
+          h+='<div style="font-size:7px;color:var(--text2);margin-bottom:4px">SELECT AGENT TO OFFER:</div>';
           h+='<select id="cm-trade-offer-'+r.id+'" onchange="cmShowOfferPreview(\''+r.id+'\')" style="width:100%;font-size:7px;padding:4px 6px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:\'Press Start 2P\',monospace">';
           h+='<option value="">-- select agent --</option>';
           agents.forEach(function(a,i){
@@ -3319,7 +3348,7 @@ async function cmAcceptRequest(id){
       // Insert row for original sender to collect their received agent
       var fromUserId=res.data.from_user;
       await sb.from('shared_agents').insert({from_user:sbUser.id,to_user:fromUserId,agent_data:JSON.stringify(cleanOffer),type:'trade',status:'accepted'});
-      await sb.from('shared_agents').update({status:'accepted'}).eq('id',id);
+      await sb.from('shared_agents').delete().eq('id',id);
       alert('Trade complete! '+ag.name+' has joined your roster. '+offeredAgent.name+' has been sent to your trade partner.');
     } else if(res.data.type==='lend'){
       // Borrowed: preserve lock + timer
@@ -3787,7 +3816,7 @@ function renderLineage(c){
     h+='<div onclick="selectLineageAgent('+i+')" style="cursor:pointer;background:'+bg+';border:'+border+';border-radius:4px;padding:6px 8px;text-align:center;min-width:70px;flex-shrink:0">';
     h+='<div>'+renderChar(a,2)+'</div>';
     h+='<div style="font-size:7px;color:'+(isSelected?'var(--gold)':'var(--text)')+';margin-top:2px;word-break:break-word">'+esc(a.name)+'</div>';
-    h+='<div style="font-size:6px;color:var(--text3)">Gen '+gen+'</div>';
+    h+='<div style="font-size:6px;color:var(--text2)">Gen '+gen+'</div>';
     h+='</div>';
   });
   h+='</div>';
@@ -3816,7 +3845,7 @@ function renderLineage(c){
     if(ag){h+='<div>'+renderChar(ag,2)+'</div>';}
     else{h+='<div style="height:48px;line-height:48px;color:var(--text3);font-size:10px">\u2753</div>';}
     h+='<div style="font-size:7px;color:'+nameColor+';margin-top:2px;word-break:break-word;line-height:1.4">'+esc(name||'?')+'</div>';
-    h+='<div style="font-size:6px;color:var(--text3)">Lv.'+lv+' \u00b7 '+esc(pers)+'</div>';
+    h+='<div style="font-size:6px;color:var(--text2)">Lv.'+lv+' \u00b7 '+esc(pers)+'</div>';
     h+='</div>';
     return h;
   }
