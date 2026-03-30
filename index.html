@@ -851,7 +851,7 @@ function renderAgents(c){
     if(a._isClone)badges+='<div class="ag-badge clone">CLONE</div>';
     if(a._isLent)badges+='<div class="ag-badge lent">ON LOAN</div>';
     if(a._isBorrowed)badges+='<div class="ag-badge borrowed">BORROWED</div>';
-    if((a._isClone&&(a._cloneTasksDone||0)<3)||a._isBorrowed)badges+='<div class="ag-badge locked" style="top:auto;bottom:4px;left:4px">LOCKED</div>';
+    if((a._isClone&&(a._cloneTasksDone||0)<3)||a._isBorrowed)badges+='<div class="ag-badge locked" style="top:auto;bottom:4px;right:4px;left:auto">LOCKED</div>';
     h+='<div class="ag-card" onclick="openModal('+i+')"><button class="ag-pin '+pin+'" onclick="event.stopPropagation();togglePin('+i+')">'+(a.pinned?'*':'*')+'</button>'+badges+'<div class="ag-sprite">'+renderChar(a,4)+'</div><div class="ag-info"><div class="ag-name">'+esc(a.name)+'</div><div class="ag-role">'+esc(a.role||'—')+'</div><div class="ag-plat">'+esc(a.platform||'claude')+'</div></div></div>';
   });
   h+='<div class="new-card" onclick="switchTab(\'create\')"><div class="plus">+</div><div class="lb">CREATE</div></div></div>';
