@@ -3174,7 +3174,7 @@ async function cmAddFriend(){
     }catch(e){}
     input.value='';
     await cmLoadFriends();
-  }catch(e){console.log('[cmAddFriend] exception:',e);alert('Error: '+(e.message||'Could not add friend'))}
+  }catch(e){alert('Error: '+(e.message||'Could not add friend'))}
   if(btn)btn.disabled=false;
 }
 
