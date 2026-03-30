@@ -1018,7 +1018,7 @@ function mUpd(k,v){if(modalIdx>=0&&agents[modalIdx]){var _a=agents[modalIdx];var
 function mGoLearn(){if(modalIdx<0)return;skLearnAgent=modalIdx;closeModal();switchTab('skills');skSubTab='library';renderSkills(document.getElementById('cb'))}
 function mRmSk(si){if(modalIdx<0)return;var a=agents[modalIdx];if(!a.skills)return;if((a._isClone&&(a._cloneTasksDone||0)<3)||a._isBorrowed||a._isLent)return;a.skills.splice(si,1);save();mRefreshSk()}
 function mRefreshSk(){if(modalIdx<0)return;var a=agents[modalIdx];var isLk=(a._isClone&&(a._cloneTasksDone||0)<3)||a._isBorrowed||a._isLent;document.getElementById('m-sk-tags').innerHTML=(a.skills||[]).map(function(s,si){var isMut=a._hasMutation&&a._mutSkill===s&&!a._mutRevealed;return isMut?'<span class="wed-sk-tag wed-sk-mystery" style="font-size:9px;padding:4px 8px">???</span>':'<span class="stag" style="font-size:9px;padding:4px 8px">'+esc(s)+(isLk?'':'<span class="rm" onclick="mRmSk('+si+')">x</span>')+'</span>'}).join('')}
-function editLook(){if(modalIdx<0)return;var _a=agents[modalIdx];if(_a&&((_a._isClone&&(_a._cloneTasksDone||0)<3)||_a._isBorrowed||_a._isLent)){alert('This agent is locked');return}var eid=modalIdx;document.getElementById('modal-bg').classList.remove('open');modalIdx=-1;editId=eid;curTab='create';document.querySelectorAll('.mi').forEach(function(m){m.classList.toggle('ac',m.dataset.tab==='create')});document.getElementById('pt').textContent=PG.create.t;document.getElementById('ps').textContent=PG.create.s;renderCreate(document.getElementById('cb'),agents[eid])}
+function editLook(){if(modalIdx<0)return;var _a=agents[modalIdx];if(_a&&((_a._isClone&&(_a._cloneTasksDone||0)<3)||_a._isBorrowed||_a._isLent))return;var eid=modalIdx;document.getElementById('modal-bg').classList.remove('open');modalIdx=-1;editId=eid;curTab='create';document.querySelectorAll('.mi').forEach(function(m){m.classList.toggle('ac',m.dataset.tab==='create')});document.getElementById('pt').textContent=PG.create.t;document.getElementById('ps').textContent=PG.create.s;renderCreate(document.getElementById('cb'),agents[eid])}
 function delModal(){if(modalIdx<0)return;var _a=agents[modalIdx];if(_a._isBorrowed){alert('Return borrowed agents first');return}if(_a._isLent){alert('Agent is on loan');return}if(!confirm('Delete '+_a.name+'?'))return;agents.splice(modalIdx,1);save();closeModal()}
 
 // ═══ CREATE TAB ═══
@@ -3152,7 +3152,6 @@ async function cmAddFriend(){
   var btn=event&&event.target;if(btn)btn.disabled=true;
   try{
     var res=await sb.from('profiles').select('id').eq('username',uname).single();
-    console.log('[cmAddFriend] profiles query result:', JSON.stringify(res));
     if(res.error){alert('Lookup error: '+res.error.message);if(btn)btn.disabled=false;return}
     if(!res.data){alert('User not found: '+uname);if(btn)btn.disabled=false;return}
     if(res.data.id===sbUser.id){alert("You can't add yourself as a friend");if(btn)btn.disabled=false;return}
@@ -3164,14 +3163,15 @@ async function cmAddFriend(){
       friend_id:res.data.id,
       friend_username:uname
     });
-    console.log('[cmAddFriend] friends insert result:', JSON.stringify(insRes));
     if(insRes.error){alert('Insert error: '+insRes.error.message);if(btn)btn.disabled=false;return}
-    // Insert reverse record so friend also sees us; ignore if already exists
-    await sb.from('friends').upsert({
-      user_id:res.data.id,
-      friend_id:sbUser.id,
-      friend_username:myName2
-    },{onConflict:'user_id,friend_id',ignoreDuplicates:true});
+    // Insert reverse record so friend also sees us; ignore duplicate silently
+    try{
+      await sb.from('friends').insert({
+        user_id:res.data.id,
+        friend_id:sbUser.id,
+        friend_username:myName2
+      });
+    }catch(e){}
     input.value='';
     await cmLoadFriends();
   }catch(e){console.log('[cmAddFriend] exception:',e);alert('Error: '+(e.message||'Could not add friend'))}
