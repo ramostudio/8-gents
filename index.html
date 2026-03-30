@@ -344,6 +344,7 @@ body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospa
 <div class="mi ac" onclick="switchTab('agents')" data-tab="agents"><span class="ar">►</span> AGENTS</div>
 <div class="mi" onclick="switchTab('skills')" data-tab="skills"><span class="ar">►</span> SKILLS</div>
 <div class="mi" onclick="switchTab('marriage')" data-tab="marriage"><span class="ar">►</span> MARRIAGE</div>
+<div class="mi" onclick="switchTab('lineage')" data-tab="lineage"><span class="ar">►</span> LINEAGE</div>
 <div class="mi" onclick="switchTab('growth')" data-tab="growth"><span class="ar">►</span> GROWTH</div>
 <div class="mi" onclick="switchTab('create')" data-tab="create"><span class="ar">►</span> CREATE</div>
 <div class="mi" onclick="switchTab('deploy')" data-tab="deploy"><span class="ar">►</span> DEPLOY</div>
@@ -795,7 +796,7 @@ function drawMonster(P,a,body,topC,botC,hatC,accC){
 }
 
 // ═══ TABS ═══
-var PG={agents:{t:'AGENTS ROSTER',s:'your deployed agents'},create:{t:'CREATE AGENT',s:'birth a new agent'},marriage:{t:'MARRIAGE CHAMBER',s:'merge two agents'},skills:{t:'SKILL LIBRARY',s:'all skills across agents'},deploy:{t:'DEPLOYMENT PANEL',s:'send agents to work'},growth:{t:'GROWTH SYSTEM',s:'agent progression'},community:{t:'COMMUNITY',s:'trade, share, connect'},info:{t:'INFO',s:'guide, privacy, about'}};
+var PG={agents:{t:'AGENTS ROSTER',s:'your deployed agents'},create:{t:'CREATE AGENT',s:'birth a new agent'},marriage:{t:'MARRIAGE CHAMBER',s:'merge two agents'},lineage:{t:'LINEAGE',s:'family trees and dynasties'},skills:{t:'SKILL LIBRARY',s:'all skills across agents'},deploy:{t:'DEPLOYMENT PANEL',s:'send agents to work'},growth:{t:'GROWTH SYSTEM',s:'agent progression'},community:{t:'COMMUNITY',s:'trade, share, connect'},info:{t:'INFO',s:'guide, privacy, about'}};
 function switchTab(t){if(t!=='community')cmCloseChat();curTab=t;document.querySelectorAll('.mi').forEach(function(m){m.classList.toggle('ac',m.dataset.tab===t)});document.getElementById('pt').textContent=PG[t].t;document.getElementById('ps').textContent=PG[t].s;renderTab()}
 function renderTab(){
   var b=document.getElementById('cb');
@@ -806,6 +807,7 @@ function renderTab(){
   else if(curTab==='growth')renderGrowth(b);
   else if(curTab==='deploy')renderDeploy(b);
   else if(curTab==='community')renderCommunity(b);
+  else if(curTab==='lineage')renderLineage(b);
   else if(curTab==='info')renderInfo(b);
   else b.innerHTML='<div style="color:var(--text3);font-size:9px;padding:40px;text-align:center;line-height:2.2">'+PG[curTab].s.toUpperCase()+'<br><br>Coming in the next phase.</div>';
 }
@@ -1812,7 +1814,8 @@ function spendXP(cost){
 function renderSkills(c){
   var h='';
   var pool=getXPPool();
-  h+='<div class="sk-pool"><span class="pool-lbl">XP POOL</span><span class="pool-val">'+Math.floor(Math.max(0,pool))+' XP</span></div>';
+  h+='<div class="sk-pool"><span class="pool-lbl">XP POOL</span><span class="pool-val">'+Math.floor(Math.max(0,pool))+' XP</span><button class="xp-guide-btn" onclick="toggleXPGuide()" style="margin-left:6px;width:14px;height:14px;border-radius:7px;border:1px solid var(--gold);background:none;color:var(--gold);font-size:7px;font-family:\'Press Start 2P\',monospace;cursor:pointer;padding:0;line-height:14px;text-align:center">'+(xpGuideOpen?'×':'?')+'</button></div>';
+  h+='<div class="xp-guide-box" style="display:'+(xpGuideOpen?'block':'none')+'">'+xpGuideHtml()+'</div>';
   h+='<div class="sk-tabs">';
   h+='<div class="sk-tab'+(skSubTab==='library'?' ac':'')+'" onclick="skSubTab=\'library\';renderSkills(document.getElementById(\'cb\'))">LIBRARY</div>';
   h+='<div class="sk-tab'+(skSubTab==='tree'?' ac':'')+'" onclick="skSubTab=\'tree\';renderSkills(document.getElementById(\'cb\'))">SKILL TREE</div>';
@@ -2253,12 +2256,27 @@ function claimDoneBonus(idx){
 }
 
 var xpGuideOpen=false;
+function xpGuideHtml(){
+  var h='<div style="background:var(--bg);border:2px solid var(--gold);border-radius:4px;padding:12px 14px;margin-bottom:14px">';
+  h+='<div style="font-size:9px;color:var(--gold);margin-bottom:10px">HOW TO EARN XP</div>';
+  h+='<div style="font-size:8px;color:var(--text2);line-height:2.2">';
+  h+='<div><span style="color:var(--cyan)">WORKING</span> = <span style="color:var(--gold)">+2 XP/min</span> \u2014 set agent status to Working</div>';
+  h+='<div><span style="color:var(--purple)">COLLAB</span> = <span style="color:var(--gold)">+3 XP/min</span> \u2014 set two agents to Collab (1.5\u00d7 bonus)</div>';
+  h+='<div><span style="color:var(--green)">DONE BONUS</span> = <span style="color:var(--gold)">+10 XP</span> \u2014 work at least 5 min, then set to Done and click Claim</div>';
+  h+='<div><span style="color:var(--orange)">DEPLOY CHAT</span> = <span style="color:var(--gold)">+1 XP</span> per message exchange</div>';
+  h+='<div><span style="color:var(--gold2)">LEND REWARD</span> = <span style="color:var(--gold)">+10 XP</span> when your lent agent returns</div>';
+  h+='<div><span style="color:var(--text2)">OFFLINE</span> = agents keep earning while you\u2019re away (up to 8 hours)</div>';
+  h+='</div>';
+  h+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">';
+  h+='<div style="font-size:8px;color:var(--gold2);margin-bottom:6px">LEVEL REQUIREMENTS</div>';
+  h+='<div style="font-size:7px;color:var(--text3);line-height:2">Lv.1\u21922: 10 XP \u00b7 Lv.2\u21923: 25 XP \u00b7 Lv.3\u21924: 50 XP \u00b7 Lv.4\u21925: 100 XP \u00b7 Lv.5\u21926: 150 XP<br>Lv.6\u21927: 250 XP \u00b7 Lv.7\u21928: 400 XP \u00b7 Lv.8\u21929: 600 XP \u00b7 Lv.9\u219210: 900 XP \u2605 Crown at Lv.10 (2,485 total)</div>';
+  h+='</div></div>';
+  return h;
+}
 function toggleXPGuide(){
   xpGuideOpen=!xpGuideOpen;
-  var el=document.getElementById('xp-guide-box');
-  var btn=document.getElementById('xp-guide-btn');
-  if(el)el.style.display=xpGuideOpen?'block':'none';
-  if(btn)btn.textContent=xpGuideOpen?'×':'?';
+  document.querySelectorAll('.xp-guide-box').forEach(function(el){el.style.display=xpGuideOpen?'block':'none';});
+  document.querySelectorAll('.xp-guide-btn').forEach(function(btn){btn.textContent=xpGuideOpen?'×':'?';});
 }
 
 function renderGrowth(c){
@@ -2274,9 +2292,10 @@ function renderGrowth(c){
   // Summary cards
   h+='<div style="display:flex;gap:10px;margin-bottom:6px;flex-wrap:wrap">';
   h+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 14px;flex:1;min-width:100px;text-align:center;position:relative">';
-  h+='<button id="xp-guide-btn" onclick="toggleXPGuide()" style="position:absolute;top:5px;right:5px;width:16px;height:16px;border-radius:8px;border:1px solid var(--gold);background:none;color:var(--gold);font-size:7px;font-family:\'Press Start 2P\',monospace;cursor:pointer;padding:0;line-height:16px;text-align:center">'+(xpGuideOpen?'×':'?')+'</button>';
+  h+='<button class="xp-guide-btn" onclick="toggleXPGuide()" style="position:absolute;top:4px;right:4px;width:14px;height:14px;border-radius:7px;border:1px solid var(--gold);background:none;color:var(--gold);font-size:7px;font-family:\'Press Start 2P\',monospace;cursor:pointer;padding:0;line-height:14px;text-align:center">'+(xpGuideOpen?'×':'?')+'</button>';
   h+='<div style="font-size:8px;color:var(--gold2);margin-bottom:3px">XP POOL</div>';
   h+='<div style="font-size:15px;color:var(--gold)">'+Math.floor(Math.max(0,pool))+'</div>';
+  h+='</div>';
 
   h+='<div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:8px 14px;flex:1;min-width:100px;text-align:center">';
   h+='<div style="font-size:8px;color:var(--gold2);margin-bottom:3px">AGENTS EARNING</div>';
@@ -2288,22 +2307,7 @@ function renderGrowth(c){
   h+='</div>';
 
   // XP Guide collapsible
-  h+='<div id="xp-guide-box" style="display:'+(xpGuideOpen?'block':'none')+';background:var(--bg);border:2px solid var(--gold);border-radius:4px;padding:12px 14px;margin-bottom:14px">';
-  h+='<div style="font-size:9px;color:var(--gold);margin-bottom:10px">HOW TO EARN XP</div>';
-  h+='<div style="font-size:8px;color:var(--text2);line-height:2.2">';
-  h+='<div><span style="color:var(--cyan)">WORKING</span> = <span style="color:var(--gold)">+2 XP/min</span> \u2014 set agent status to Working</div>';
-  h+='<div><span style="color:var(--purple)">COLLAB</span> = <span style="color:var(--gold)">+3 XP/min</span> \u2014 set two agents to Collab (1.5\u00d7 bonus)</div>';
-  h+='<div><span style="color:var(--green)">DONE BONUS</span> = <span style="color:var(--gold)">+10 XP</span> \u2014 work at least 5 min, then set to Done and click Claim</div>';
-  h+='<div><span style="color:var(--orange)">DEPLOY CHAT</span> = <span style="color:var(--gold)">+1 XP</span> per message exchange</div>';
-  h+='<div><span style="color:var(--gold2)">LEND REWARD</span> = <span style="color:var(--gold)">+10 XP</span> when your lent agent returns</div>';
-  h+='<div><span style="color:var(--text2)">OFFLINE</span> = agents keep earning while you\u2019re away (up to 8 hours)</div>';
-  h+='</div>';
-  h+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">';
-  h+='<div style="font-size:8px;color:var(--gold2);margin-bottom:6px">LEVEL REQUIREMENTS</div>';
-  h+='<div style="font-size:7px;color:var(--text3);line-height:2">';
-  h+='Lv.1\u21922: 10 XP \u00b7 Lv.2\u21923: 25 XP \u00b7 Lv.3\u21924: 50 XP \u00b7 Lv.4\u21925: 100 XP \u00b7 Lv.5\u21926: 150 XP<br>';
-  h+='Lv.6\u21927: 250 XP \u00b7 Lv.7\u21928: 400 XP \u00b7 Lv.8\u21929: 600 XP \u00b7 Lv.9\u219210: 900 XP \u2605 Crown at Lv.10 (2,485 XP total)';
-  h+='</div></div></div>';
+  h+='<div class="xp-guide-box" style="display:'+(xpGuideOpen?'block':'none')+'">'+xpGuideHtml()+'</div>';
 
   // Agent status list
   h+='<div style="font-size:9px;color:var(--gold2);margin-bottom:8px">AGENT STATUS</div>';
@@ -3308,15 +3312,14 @@ async function cmCollectTrade(id){
   try{
     var res=await sb.from('shared_agents').select('*').eq('id',id).single();
     if(!res.data){alert('Could not find trade record.');if(btn)btn.disabled=false;return}
-    // Guard: only collect rows that are still collectable
+    // Guard: only collect rows that are still collectable (row deleted on collect, so second call hits !res.data)
     if(res.data.status!=='accepted'&&res.data.status!=='returned'){
-      alert('This agent has already been collected or the trade was cancelled.');
       var card=document.getElementById('cm-card-'+id);if(card)card.remove();
       cmUpdateNotifBadge();
       return;
     }
-    // Mark as collected in Supabase FIRST — prevents double-collection on refresh
-    var upd=await sb.from('shared_agents').update({status:'collected'}).eq('id',id).in('status',['accepted','returned']);
+    // Delete row FIRST — prevents double-collection on refresh (second call will get !res.data)
+    var upd=await sb.from('shared_agents').delete().eq('id',id);
     if(upd.error)throw upd.error;
     var ag=JSON.parse(res.data.agent_data);
     // Assign random look if needed
@@ -3708,6 +3711,126 @@ function clrGrid(){pgData=Array(384).fill(null);drawPg()}
 function applyCust(){custPixels=[];pgData.forEach(function(c,i){if(c)custPixels.push({x:i%16,y:Math.floor(i/16),c:c})});updPv()}
 function clearCust(){custPixels=null;updPv()}
 
+// ═══ LINEAGE TAB ═══
+var lineageSelectedIdx=-1;
+
+function getGenDepth(a,depth){
+  if(!a||!a._parents)return depth;
+  var p1=null,p2=null;
+  agents.forEach(function(x){
+    if(x.name===(a._parents[0]||'')&&!p1)p1=x;
+    if(x.name===(a._parents[1]||'')&&!p2)p2=x;
+  });
+  return Math.max(getGenDepth(p1,depth+1),getGenDepth(p2,depth+1));
+}
+
+function selectLineageAgent(idx){
+  lineageSelectedIdx=idx;
+  renderLineage(document.getElementById('cb'));
+}
+
+function renderLineage(c){
+  var h='';
+  if(!agents.length){
+    c.innerHTML='<div style="color:var(--text3);font-size:9px;padding:40px;text-align:center">No agents yet. Go to CREATE tab.</div>';
+    return;
+  }
+
+  // Scrollable agent selector row
+  h+='<div style="font-size:9px;color:var(--gold2);margin-bottom:8px">SELECT AGENT</div>';
+  h+='<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:16px;border-bottom:1px solid var(--border)">';
+  agents.forEach(function(a,i){
+    var isSelected=(i===lineageSelectedIdx);
+    var gen=a._parents?getGenDepth(a,0):0;
+    var border=isSelected?'2px solid var(--gold)':'1px solid var(--border)';
+    var bg=isSelected?'var(--bg)':'var(--bg3)';
+    h+='<div onclick="selectLineageAgent('+i+')" style="cursor:pointer;background:'+bg+';border:'+border+';border-radius:4px;padding:6px 8px;text-align:center;min-width:70px;flex-shrink:0">';
+    h+='<div>'+renderChar(a,2)+'</div>';
+    h+='<div style="font-size:7px;color:'+(isSelected?'var(--gold)':'var(--text)')+';margin-top:2px;word-break:break-word">'+esc(a.name)+'</div>';
+    h+='<div style="font-size:6px;color:var(--text3)">Gen '+gen+'</div>';
+    h+='</div>';
+  });
+  h+='</div>';
+
+  if(lineageSelectedIdx<0||!agents[lineageSelectedIdx]){
+    h+='<div style="color:var(--text3);font-size:9px;padding:20px;text-align:center">Click an agent above to view their dynasty tree.</div>';
+    c.innerHTML=h;
+    return;
+  }
+
+  var a=agents[lineageSelectedIdx];
+
+  function findAgent(name){
+    var found=null;
+    agents.forEach(function(x){if(x.name===name&&!found)found=x;});
+    return found;
+  }
+
+  function treeCard(ag,name,isMain){
+    var lv=ag?getLevelFromXP(ag.xp||0):1;
+    var pers=ag?(ag.personality||'?'):'?';
+    var border=isMain?'2px solid var(--gold)':'1px solid var(--border)';
+    var bg=isMain?'var(--bg)':'var(--bg2)';
+    var nameColor=isMain?'var(--gold)':'var(--text)';
+    var h='<div style="text-align:center;background:'+bg+';border:'+border+';border-radius:4px;padding:6px 8px;min-width:70px;max-width:90px">';
+    if(ag){h+='<div>'+renderChar(ag,2)+'</div>';}
+    else{h+='<div style="height:48px;line-height:48px;color:var(--text3);font-size:10px">\u2753</div>';}
+    h+='<div style="font-size:7px;color:'+nameColor+';margin-top:2px;word-break:break-word;line-height:1.4">'+esc(name||'?')+'</div>';
+    h+='<div style="font-size:6px;color:var(--text3)">Lv.'+lv+' \u00b7 '+esc(pers)+'</div>';
+    h+='</div>';
+    return h;
+  }
+
+  var row='<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">';
+  var connector='<div style="text-align:center;font-size:10px;color:var(--border);margin:6px 0">\u2193</div>';
+
+  h+='<div style="font-size:9px;color:var(--gold2);margin-bottom:12px">DYNASTY TREE: '+esc(a.name)+'</div>';
+
+  // Grandparents
+  var p1name=(a._parents||[])[0]||null;
+  var p2name=(a._parents||[])[1]||null;
+  var p1=p1name?findAgent(p1name):null;
+  var p2=p2name?findAgent(p2name):null;
+  var gp1L=p1&&p1._parents?(p1._parents[0]||null):null;
+  var gp1R=p1&&p1._parents?(p1._parents[1]||null):null;
+  var gp2L=p2&&p2._parents?(p2._parents[0]||null):null;
+  var gp2R=p2&&p2._parents?(p2._parents[1]||null):null;
+  var hasGP=gp1L||gp1R||gp2L||gp2R;
+  if(hasGP){
+    h+=row;
+    if(gp1L)h+=treeCard(findAgent(gp1L),gp1L,false);
+    if(gp1R)h+=treeCard(findAgent(gp1R),gp1R,false);
+    if(gp2L)h+=treeCard(findAgent(gp2L),gp2L,false);
+    if(gp2R)h+=treeCard(findAgent(gp2R),gp2R,false);
+    h+='</div>'+connector;
+  }
+
+  // Parents
+  if(p1name||p2name){
+    h+=row;
+    if(p1name)h+=treeCard(p1,p1name,false);
+    if(p2name)h+=treeCard(p2,p2name,false);
+    h+='</div>'+connector;
+  }
+
+  // Selected agent
+  h+=row+treeCard(a,a.name,true)+'</div>';
+
+  // Children (agents whose _parents include this agent's name)
+  var children=[];
+  agents.forEach(function(x){
+    if(x._parents&&(x._parents[0]===a.name||x._parents[1]===a.name))children.push(x);
+  });
+  if(children.length){
+    h+=connector+row;
+    children.forEach(function(ch){h+=treeCard(ch,ch.name,false);});
+    h+='</div>';
+    h+='<div style="font-size:7px;color:var(--text3);text-align:center;margin-top:4px">'+children.length+' child'+(children.length>1?'ren':'')+'</div>';
+  }
+
+  c.innerHTML=h;
+}
+
 // ═══ INFO TAB ═══
 var infoSubTab='howtoplay';
 
@@ -3800,14 +3923,14 @@ function renderInfoPrivacy(h,c){
 }
 
 function renderInfoAbout(h,c){
-  h+='<div style="text-align:center;padding:20px 0 10px">';
-  h+='<div style="font-size:13px;color:var(--gold);margin-bottom:6px">8-GENTS</div>';
-  h+='<div style="font-size:8px;color:var(--text2);margin-bottom:16px">Your AI agents, alive.</div>';
-  h+='<div style="font-size:8px;color:var(--text3);line-height:2.5">';
+  h+='<div style="text-align:center;padding:24px 10px 10px">';
+  h+='<div style="font-size:15px;color:var(--gold);margin-bottom:10px">8-GENTS</div>';
+  h+='<div style="font-size:9px;color:var(--text);margin-bottom:20px;line-height:1.8">Your AI agents, alive.</div>';
+  h+='<div style="font-size:9px;color:var(--text);line-height:2.8">';
   h+='Created by <span style="color:var(--cyan)">Star</span> / Ramo Studio<br>';
   h+='Built with love, pixel art, and too much coffee<br>';
   h+='Version <span style="color:var(--gold)">2.0</span><br><br>';
-  h+='<span style="color:var(--gold2)">&ldquo;Where AI meets Tamagotchi meets RPG&rdquo;</span>';
+  h+='<span style="color:var(--gold2)">\u201cWhere AI meets Tamagotchi meets RPG\u201d</span>';
   h+='</div></div>';
   c.innerHTML=h;
 }
