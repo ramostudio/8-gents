@@ -794,7 +794,7 @@ function drawMonster(P,a,body,topC,botC,hatC,accC){
 
 // ═══ TABS ═══
 var PG={agents:{t:'AGENTS ROSTER',s:'your deployed agents'},create:{t:'CREATE AGENT',s:'birth a new agent'},marriage:{t:'MARRIAGE CHAMBER',s:'merge two agents'},skills:{t:'SKILL LIBRARY',s:'all skills across agents'},deploy:{t:'DEPLOYMENT PANEL',s:'send agents to work'},growth:{t:'GROWTH SYSTEM',s:'agent progression'},community:{t:'COMMUNITY',s:'trade, share, connect'}};
-function switchTab(t){curTab=t;document.querySelectorAll('.mi').forEach(function(m){m.classList.toggle('ac',m.dataset.tab===t)});document.getElementById('pt').textContent=PG[t].t;document.getElementById('ps').textContent=PG[t].s;renderTab()}
+function switchTab(t){if(t!=='community')cmCloseChat();curTab=t;document.querySelectorAll('.mi').forEach(function(m){m.classList.toggle('ac',m.dataset.tab===t)});document.getElementById('pt').textContent=PG[t].t;document.getElementById('ps').textContent=PG[t].s;renderTab()}
 function renderTab(){
   var b=document.getElementById('cb');
   if(curTab==='agents')renderAgents(b);
@@ -2707,6 +2707,13 @@ function renderCommunity(c){
   }
 
   var username=sbUser.user_metadata&&sbUser.user_metadata.username||sbUser.email.split('@')[0];
+  if(cmSubTab!=='friends')cmCloseChat();
+
+  // Global pending requests — visible on every sub-tab
+  h+='<div class="cm-section" style="padding:10px 14px;margin-bottom:10px">';
+  h+='<div class="cm-title" style="font-size:9px;margin-bottom:6px">PENDING REQUESTS</div>';
+  h+='<div id="cm-pending-global" style="font-size:8px;color:var(--text3)">Loading...</div>';
+  h+='</div>';
 
   // Sub tabs
   h+='<div class="sk-tabs" style="margin-bottom:14px">';
@@ -2724,6 +2731,7 @@ function renderCommunity(c){
   else if(cmSubTab==='skills')renderCmSkills(h,c);
   else if(cmSubTab==='friends')renderCmFriends(h,c);
   else if(cmSubTab==='profile')renderCmProfile(h,c);
+  cmLoadPendingTrades();
 }
 
 function renderCmShare(h,c){
@@ -2768,16 +2776,8 @@ function renderCmTrade(h,c){
     h+='</div>';
   });
   h+='</div>';
-
-  // Pending trades
-  h+='<div class="cm-section">';
-  h+='<div class="cm-title">PENDING TRADES</div>';
-  h+='<div id="cm-trades-pending" style="font-size:8px;color:var(--text3)">Loading...</div>';
-  h+='</div>';
-
   c.innerHTML=h;
   if(cmFriendPrefill){var ti=document.getElementById('cm-trade-user');if(ti){ti.value=cmFriendPrefill;cmFriendPrefill=null}}
-  cmLoadPendingTrades();
 }
 
 function renderCmLend(h,c){
@@ -2845,6 +2845,7 @@ function renderCmFriends(h,c){
   h+='</div>';
   h+='<div id="cm-friends-list"></div>';
   h+='</div>';
+  h+='<div id="cm-chat-box" class="cm-section" style="display:none"></div>';
   c.innerHTML=h;
   cmLoadFriends();
 }
@@ -2951,7 +2952,7 @@ async function cmLendAgent(idx){
       to_user:res.data.id,
       agent_data:JSON.stringify(clean),
       type:'lend',
-      status:'active'
+      status:'pending'
     });
     // Mark local agent as on loan
     a._isLent=true;
@@ -2966,11 +2967,11 @@ async function cmLendAgent(idx){
 
 async function cmLoadPendingTrades(){
   if(!sb||!sbUser)return;
-  var el=document.getElementById('cm-trades-pending');
+  var el=document.getElementById('cm-pending-global');
   if(!el)return;
   try{
     var res=await sb.from('shared_agents').select('*').eq('to_user',sbUser.id).in('type',['trade','share','lend']).eq('status','pending');
-    if(!res.data||!res.data.length){el.innerHTML='<div style="color:var(--text3)">No pending requests.</div>';return}
+    if(!res.data||!res.data.length){el.innerHTML='<div style="color:var(--text3);font-size:8px">No pending requests.</div>';return}
     var h='';
     res.data.forEach(function(r){
       var ag=JSON.parse(r.agent_data);
@@ -3009,6 +3010,7 @@ async function cmAcceptRequest(id){
       ag._isClone=true;
       ag._cloneTasksDone=ag._cloneTasksDone||0;
       ag._cloneFrom=ag._cloneFrom||'unknown';
+      console.log('[ACCEPT]',ag.name,'_isClone:',ag._isClone,'_cloneTasksDone:',ag._cloneTasksDone,'_cloneFrom:',ag._cloneFrom);
       agents.push(ag);nxId++;save();
       await sb.from('shared_agents').update({status:'accepted'}).eq('id',id);
       alert(ag.name+' clone received! Locked until 3 tasks completed.');
@@ -3117,6 +3119,9 @@ async function cmDeleteAccount(){
 // ═══ FRIENDS LIST ═══
 var cmFriendsList=[];
 var cmFriendPrefill=null;
+var cmChatFriend=null;
+var cmChatMessages=[];
+var cmChatTimer=null;
 
 async function cmLoadFriends(){
   var el=document.getElementById('cm-friends-list');
@@ -3124,16 +3129,27 @@ async function cmLoadFriends(){
   try{
     var res=await sb.from('friends').select('*').eq('user_id',sbUser.id).order('created_at',{ascending:false});
     cmFriendsList=(res.data||[]);
+    // Fetch unread counts for all friends in one query
+    var unreadCounts={};
+    try{
+      var ur=await sb.from('friend_messages').select('from_user').eq('to_user',sbUser.id).eq('read',false);
+      (ur.data||[]).forEach(function(m){unreadCounts[m.from_user]=(unreadCounts[m.from_user]||0)+1});
+    }catch(e){}
     var h='';
     if(!cmFriendsList.length){
       h+='<div style="font-size:8px;color:var(--text3);text-align:center;padding:16px">No friends yet. Add someone by username above.</div>';
     } else {
       cmFriendsList.forEach(function(f){
+        var unread=unreadCounts[f.friend_id]||0;
+        var isActive=cmChatFriend&&cmChatFriend.id===f.friend_id;
+        var chatStyle='padding:3px 6px;font-size:7px;color:var(--cyan);border-color:rgba(0,255,204,0.3)'+(isActive?';background:var(--cyan2)':'');
+        var badge=unread?'<span style="background:var(--red);color:#fff;border-radius:50%;font-size:6px;padding:1px 4px;margin-left:3px">'+unread+'</span>':'';
         h+='<div class="cm-agent-row">';
         h+='<div class="cm-agent-info"><div class="cm-agent-name">'+esc(f.friend_username)+'</div></div>';
         h+='<button class="cm-btn share" onclick="cmFriendAction(\'share\',\''+esc(f.friend_username).replace(/'/g,"\\'")+'\')" style="padding:3px 6px;font-size:7px">SHARE</button> ';
         h+='<button class="cm-btn trade" onclick="cmFriendAction(\'trade\',\''+esc(f.friend_username).replace(/'/g,"\\'")+'\')" style="padding:3px 6px;font-size:7px">TRADE</button> ';
         h+='<button class="cm-btn lend" onclick="cmFriendAction(\'lend\',\''+esc(f.friend_username).replace(/'/g,"\\'")+'\')" style="padding:3px 6px;font-size:7px">LEND</button> ';
+        h+='<button class="cm-btn" style="'+chatStyle+'" onclick="cmOpenChat(\''+f.friend_id+'\',\''+esc(f.friend_username).replace(/'/g,"\\'")+'\')">CHAT'+badge+'</button> ';
         h+='<button class="cm-btn" style="color:var(--red);border-color:var(--red);padding:3px 6px;font-size:7px" onclick="cmRemoveFriend(\''+f.id+'\')">X</button>';
         h+='</div>';
       });
@@ -3195,6 +3211,76 @@ function cmFriendAction(tab,username){
   cmFriendPrefill=username;
   cmSubTab=tab;
   renderCommunity(document.getElementById('cb'));
+}
+
+function cmOpenChat(friendId,friendUsername){
+  if(cmChatTimer){clearInterval(cmChatTimer);cmChatTimer=null}
+  cmChatFriend={id:friendId,username:friendUsername};
+  cmLoadMessages(friendId);
+  cmChatTimer=setInterval(function(){if(cmChatFriend&&cmChatFriend.id===friendId)cmLoadMessages(friendId)},5000);
+  cmLoadFriends(); // refresh friend list to show active state
+}
+
+function cmCloseChat(){
+  if(cmChatTimer){clearInterval(cmChatTimer);cmChatTimer=null}
+  cmChatFriend=null;
+  cmChatMessages=[];
+  var el=document.getElementById('cm-chat-box');
+  if(el){el.style.display='none';el.innerHTML=''}
+}
+
+async function cmSendMessage(){
+  if(!sb||!sbUser||!cmChatFriend)return;
+  var input=document.getElementById('cm-chat-input');
+  if(!input||!input.value.trim())return;
+  var msg=input.value.trim();
+  input.value='';
+  input.disabled=true;
+  try{
+    await sb.from('friend_messages').insert({from_user:sbUser.id,to_user:cmChatFriend.id,message:msg,read:false});
+    await cmLoadMessages(cmChatFriend.id);
+  }catch(e){alert('Error sending message')}
+  input.disabled=false;
+  if(input)input.focus();
+}
+
+async function cmLoadMessages(friendId){
+  if(!sb||!sbUser)return;
+  var el=document.getElementById('cm-chat-box');
+  if(!el)return;
+  try{
+    // Mark incoming messages as read
+    await sb.from('friend_messages').update({read:true}).eq('to_user',sbUser.id).eq('from_user',friendId).eq('read',false);
+    // Fetch both directions of the conversation
+    var r1=await sb.from('friend_messages').select('*').eq('from_user',sbUser.id).eq('to_user',friendId).order('created_at',{ascending:true}).limit(100);
+    var r2=await sb.from('friend_messages').select('*').eq('from_user',friendId).eq('to_user',sbUser.id).order('created_at',{ascending:true}).limit(100);
+    var msgs=((r1.data||[]).concat(r2.data||[])).sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at)});
+    var fn=cmChatFriend?cmChatFriend.username:'?';
+    var h='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+    h+='<div style="font-size:9px;color:var(--cyan)">CHAT: '+esc(fn)+'</div>';
+    h+='<button class="cm-btn" style="padding:2px 6px;font-size:7px;color:var(--text3)" onclick="cmCloseChat()">CLOSE</button>';
+    h+='</div>';
+    h+='<div id="cm-chat-msgs" style="max-height:300px;overflow-y:auto;margin-bottom:8px;display:flex;flex-direction:column;gap:6px">';
+    if(!msgs.length){h+='<div style="font-size:7px;color:var(--text3);text-align:center;padding:10px">No messages yet. Say hello!</div>'}
+    msgs.forEach(function(m){
+      var isMe=m.from_user===sbUser.id;
+      var t=new Date(m.created_at);
+      var ts=t.getHours().toString().padStart(2,'0')+':'+t.getMinutes().toString().padStart(2,'0');
+      h+='<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+'">';
+      h+='<div style="max-width:85%;padding:6px 10px;border-radius:4px;font-size:8px;line-height:1.6;word-break:break-word;background:'+(isMe?'rgba(255,204,68,0.12)':'var(--bg2)')+';border:1px solid '+(isMe?'rgba(255,204,68,0.3)':'var(--border)')+'">'+esc(m.message)+'</div>';
+      h+='<div style="font-size:6px;color:var(--text3);margin-top:2px">'+ts+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+    h+='<div style="display:flex;gap:6px">';
+    h+='<input class="cm-user-input" id="cm-chat-input" placeholder="Type a message..." style="flex:1" onkeydown="if(event.key===\'Enter\')cmSendMessage()">';
+    h+='<button class="cm-btn share" onclick="cmSendMessage()" style="padding:5px 10px;font-size:8px">SEND</button>';
+    h+='</div>';
+    el.innerHTML=h;
+    el.style.display='block';
+    var msgsEl=document.getElementById('cm-chat-msgs');
+    if(msgsEl)msgsEl.scrollTop=msgsEl.scrollHeight;
+  }catch(e){el.innerHTML='<div style="color:var(--red);font-size:8px">Error loading messages</div>';el.style.display='block'}
 }
 
 // ═══ SHAREABLE AGENT CARDS ═══
