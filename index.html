@@ -1010,7 +1010,7 @@ function openModal(idx){
   if(editBtn){if(isLocked){editBtn.style.display='none'}else{editBtn.style.display=''}}
   var shareBtn=document.getElementById('m-share-btn');
   if(shareBtn){if(!sb||!sbUser||a._isLent){shareBtn.style.display='none'}else{shareBtn.style.display=''}}
-  if(delBtn){if(a._isLent){delBtn.style.display='none'}else{delBtn.style.display=''}}
+  if(delBtn){if(a._isLent||a._isBorrowed){delBtn.style.display='none'}else{delBtn.style.display=''}}
   document.getElementById('modal-bg').classList.add('open');
 }
 function closeModal(){document.getElementById('modal-bg').classList.remove('open');modalIdx=-1;renderTab()}
