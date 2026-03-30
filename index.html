@@ -2019,7 +2019,7 @@ async function publishSkillFromCard(i){
   }catch(e){alert('Error publishing: '+(e.message||'Unknown error'))}
 }
 // ═══ GROWTH SYSTEM ═══
-var XP_TABLE=[0,10,25,50,100,150,250,400,600,900]; // XP needed for levels 1→2, 2→3, ... 9→10
+var XP_TABLE=[10,25,50,100,150,250,400,600,900]; // XP needed for levels 1→2, 2→3, ... 9→10
 var XP_CUMULATIVE=[0]; // cumulative XP at start of each level
 (function(){var t=0;for(var i=0;i<XP_TABLE.length;i++){t+=XP_TABLE[i];XP_CUMULATIVE.push(t)}})();
 // XP_CUMULATIVE = [0, 10, 35, 85, 185, 335, 585, 985, 1585, 2485, ...]
@@ -2273,7 +2273,7 @@ var dpAgent=-1,dpProvider='claude',dpConnected=false,dpMessages=[],dpStats={sent
 var PROVIDERS={
   claude:{name:'Claude',url:'https://api.anthropic.com/v1/messages',model:'claude-sonnet-4-20250514',keyPrefix:'sk-ant-'},
   chatgpt:{name:'ChatGPT',url:'https://api.openai.com/v1/chat/completions',model:'gpt-4o',keyPrefix:'sk-'},
-  gemini:{name:'Gemini',url:'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',model:'gemini-pro',keyPrefix:'AI'},
+  gemini:{name:'Gemini',url:'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',model:'gemini-2.0-flash',keyPrefix:'AI'},
   custom:{name:'Custom',url:'',model:'',keyPrefix:''}
 };
 
@@ -2589,7 +2589,7 @@ async function authSubmit(){
 
 async function authLogout(){
   if(!sb)return;
-  await sb.auth.signOut();
+  try{await sb.auth.signOut()}catch(e){}
   sbUser=null;
   authUpdateUI();
 }
