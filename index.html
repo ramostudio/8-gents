@@ -3065,18 +3065,30 @@ async function cmLoadPendingTrades(){
   var el=document.getElementById('cm-pending-global');
   if(!el)return;
   try{
-    // Pending incoming requests + accepted trade returns ready to collect
-    var res=await sb.from('shared_agents').select('*').eq('to_user',sbUser.id).in('type',['trade','share','lend']).in('status',['pending','accepted']);
+    // Pending incoming requests + accepted/returned trade cards ready to collect
+    var res=await sb.from('shared_agents').select('*').eq('to_user',sbUser.id).in('type',['trade','share','lend']).in('status',['pending','accepted','returned']);
     if(!res.data||!res.data.length){el.innerHTML='<div style="color:var(--text3);font-size:8px">No pending requests.</div>';return}
     var h='';
     res.data.forEach(function(r){
       var ag=JSON.parse(r.agent_data);
-      h+='<div class="cm-trade-pending">';
-      if(r.status==='accepted'&&r.type==='trade'){
-        // Trade completed — sender collects the offered-back agent
-        h+='<div style="font-size:8px;color:var(--cyan);margin-bottom:8px">TRADE COMPLETE \u2014 YOUR AGENT ARRIVED</div>';
-        h+=cmAgentPreviewCard(ag);
-        h+='<div style="margin-top:8px"><button class="cm-btn share" onclick="cmCollectTrade(\''+r.id+'\')">COLLECT</button></div>';
+      h+='<div class="cm-trade-pending" id="cm-card-'+r.id+'">';
+      if(r.type==='trade'&&(r.status==='accepted'||r.status==='returned')){
+        if(r.status==='returned'){
+          // Agent returned after partner declined — just collect it back
+          h+='<div style="font-size:8px;color:var(--text2);margin-bottom:8px">AGENT RETURNED TO YOU</div>';
+          h+=cmAgentPreviewCard(ag);
+          h+='<div style="display:flex;gap:6px;margin-top:8px">';
+          h+='<button class="cm-btn share" onclick="cmCollectTrade(\''+r.id+'\')">COLLECT</button>';
+          h+='</div>';
+        } else {
+          // Trade completed — sender reviews and collects or declines
+          h+='<div style="font-size:8px;color:var(--cyan);margin-bottom:8px">TRADE COMPLETE \u2014 YOUR AGENT ARRIVED</div>';
+          h+=cmAgentPreviewCard(ag);
+          h+='<div style="display:flex;gap:6px;margin-top:8px">';
+          h+='<button class="cm-btn share" onclick="cmCollectTrade(\''+r.id+'\')">COLLECT</button>';
+          h+='<button class="cm-btn" style="color:var(--red);border-color:var(--red)" onclick="cmDeclineTrade(\''+r.id+'\')">DECLINE</button>';
+          h+='</div>';
+        }
       } else {
         h+='<div style="font-size:8px;color:var(--orange);margin-bottom:8px">'+r.type.toUpperCase()+' REQUEST</div>';
         if(r.type==='trade'){
@@ -3198,6 +3210,16 @@ async function cmCollectTrade(id){
   try{
     var res=await sb.from('shared_agents').select('*').eq('id',id).single();
     if(!res.data){alert('Could not find trade record.');if(btn)btn.disabled=false;return}
+    // Guard: only collect rows that are still collectable
+    if(res.data.status!=='accepted'&&res.data.status!=='returned'){
+      alert('This agent has already been collected or the trade was cancelled.');
+      var card=document.getElementById('cm-card-'+id);if(card)card.remove();
+      cmUpdateNotifBadge();
+      return;
+    }
+    // Mark as collected in Supabase FIRST — prevents double-collection on refresh
+    var upd=await sb.from('shared_agents').update({status:'collected'}).eq('id',id).in('status',['accepted','returned']);
+    if(upd.error)throw upd.error;
     var ag=JSON.parse(res.data.agent_data);
     // Assign random look if needed
     if(!ag.body||!ag.topColor){
@@ -3213,12 +3235,39 @@ async function cmCollectTrade(id){
     delete ag._isClone;delete ag._cloneTasksDone;delete ag._cloneFrom;
     delete ag._isBorrowed;delete ag._isLent;delete ag._lentBy;
     agents.push(ag);nxId++;save();
-    // Mark row as collected (remove from pending)
-    await sb.from('shared_agents').update({status:'collected'}).eq('id',id);
+    // Remove card from DOM immediately — no flicker on re-render
+    var card=document.getElementById('cm-card-'+id);if(card)card.remove();
     alert(ag.name+' has joined your roster!');
-    cmLoadPendingTrades();
     cmUpdateNotifBadge();
   }catch(e){alert('Error collecting agent: '+(e.message||'Unknown error'));if(btn)btn.disabled=false}
+}
+
+async function cmDeclineTrade(id){
+  if(!sb||!sbUser)return;
+  var btn=event&&event.target;if(btn)btn.disabled=true;
+  try{
+    var res=await sb.from('shared_agents').select('*').eq('id',id).single();
+    if(!res.data){alert('Trade record not found.');if(btn)btn.disabled=false;return}
+    if(res.data.status!=='accepted'){
+      alert('This trade has already been processed.');
+      var card=document.getElementById('cm-card-'+id);if(card)card.remove();
+      return;
+    }
+    // Mark this row as declined
+    await sb.from('shared_agents').update({status:'declined'}).eq('id',id);
+    // Return the offered agent back to the original acceptor (from_user of this row)
+    await sb.from('shared_agents').insert({
+      from_user:sbUser.id,
+      to_user:res.data.from_user,
+      agent_data:res.data.agent_data,
+      type:'trade',
+      status:'returned'
+    });
+    // Remove card immediately
+    var card=document.getElementById('cm-card-'+id);if(card)card.remove();
+    alert('Trade declined \u2014 agents returned to original owners.');
+    cmUpdateNotifBadge();
+  }catch(e){alert('Error declining trade: '+(e.message||'Unknown error'));if(btn)btn.disabled=false}
 }
 
 async function cmPublishSkill(idx){
