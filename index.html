@@ -367,6 +367,7 @@ body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospa
 <div id="m-foot">
 <button class="m-btn m-edit" id="m-edit-btn" onclick="editLook()">EDIT LOOK</button>
 <button class="m-btn" id="m-lineage-btn" onclick="toggleLineage()" style="background:var(--purple);color:#fff;border:none;display:none">LINEAGE</button>
+<button class="m-btn" id="m-copy-prompt-btn" onclick="mCopyPrompt()" style="background:rgba(255,204,68,0.15);color:var(--gold);border:1px solid var(--gold)">COPY PROMPT</button>
 <button class="m-btn" id="m-share-btn" onclick="cmShareCard(modalIdx)" style="background:var(--cyan);color:#000;border:none">SHARE LINK</button>
 <button class="m-btn m-del" id="m-del-btn" onclick="delModal()">DEL</button>
 </div>
@@ -1025,6 +1026,16 @@ function openModal(idx){
   document.getElementById('modal-bg').classList.add('open');
 }
 function closeModal(){document.getElementById('modal-bg').classList.remove('open');modalIdx=-1;renderTab()}
+
+function mCopyPrompt(){
+  if(modalIdx<0||!agents[modalIdx])return;
+  var text=dpGenPrompt(agents[modalIdx]);
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){alert('System prompt copied! Paste into any AI platform.')});
+  } else {
+    prompt('Copy this prompt:',text);
+  }
+}
 
 function toggleLineage(){
   var el=document.getElementById('m-lineage');
@@ -2477,6 +2488,17 @@ function renderDeploy(c){
 
   var a=agents[dpAgent];
 
+  // Platform launch section
+  h+='<div style="background:var(--bg);border:2px solid var(--border);border-radius:4px;padding:12px 14px;margin-bottom:14px">';
+  h+='<div style="font-size:9px;color:var(--gold);margin-bottom:4px">DEPLOY TO PLATFORM</div>';
+  h+='<div style="font-size:7px;color:var(--text2);margin-bottom:10px">Open your agent directly in the AI platform \u2014 no API key needed</div>';
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+  h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'claude\')" style="font-size:8px;padding:7px 12px;background:rgba(230,126,34,0.12);color:#f0834a;border-color:#f0834a">OPEN IN CLAUDE</button>';
+  h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'chatgpt\')" style="font-size:8px;padding:7px 12px;background:rgba(16,163,127,0.12);color:#10a37f;border-color:#10a37f">OPEN IN CHATGPT</button>';
+  h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'perplexity\')" style="font-size:8px;padding:7px 12px;background:rgba(32,144,253,0.12);color:#2090fd;border-color:#2090fd">OPEN IN PERPLEXITY</button>';
+  h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'copy\')" style="font-size:8px;padding:7px 12px;color:var(--gold);border-color:var(--gold)">COPY PROMPT</button>';
+  h+='</div></div>';
+
   // Setup panel
   h+='<div class="dp-setup">';
   h+='<div style="font-size:9px;color:var(--gold);margin-bottom:8px">DEPLOYMENT CONFIG</div>';
@@ -2602,6 +2624,24 @@ function dpCopyPrompt(){
     navigator.clipboard.writeText(text).then(function(){alert('System prompt copied!')});
   } else {
     prompt('Copy this prompt:',text);
+  }
+}
+function dpLaunchPlatform(platform){
+  if(dpAgent<0||!agents[dpAgent])return;
+  var text=dpGenPrompt(agents[dpAgent]);
+  var enc=encodeURIComponent(text);
+  if(platform==='claude'){
+    window.open('https://claude.ai/new?q='+enc,'_blank');
+  } else if(platform==='chatgpt'){
+    window.open('https://chat.openai.com/?prompt='+enc,'_blank');
+  } else if(platform==='perplexity'){
+    window.open('https://perplexity.ai/?q='+enc,'_blank');
+  } else if(platform==='copy'){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){alert('Prompt copied!')});
+    } else {
+      prompt('Copy this prompt:',text);
+    }
   }
 }
 
@@ -3688,7 +3728,7 @@ async function cmLoadPublicCard(code){
       ag.skills.forEach(function(s){h+='<span class="sk-tag">'+esc(s)+'</span>'});
       h+='</div>';
     }
-    h+='<div style="font-size:7px;color:var(--text3);margin-bottom:4px">Created by '+esc(card.username||'unknown')+' \u00b7 '+((card.views||0)+1)+' views</div>';
+    h+='<div style="font-size:7px;color:var(--gold2);margin-bottom:4px">Created by '+esc(card.username||'unknown')+' \u00b7 '+((card.views||0)+1)+' views</div>';
     h+='<div style="margin-top:16px"><button class="m-btn m-edit" onclick="closeCardViewer()" style="padding:10px 24px;font-size:10px">CLOSE</button></div>';
     h+='</div>';
     document.getElementById('card-viewer-body').innerHTML=h;
