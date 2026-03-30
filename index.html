@@ -845,7 +845,7 @@ function renderAgents(c){
 }
 function togglePin(i){agents[i].pinned=!agents[i].pinned;save();renderAgents(document.getElementById('cb'))}
 function exportAll(){
-  var clean=agents.map(function(a){var o={};Object.keys(a).forEach(function(k){if(k.charAt(0)!=='_')o[k]=a[k]});return o});
+  var clean=agents.map(function(a){var o={};Object.keys(a).forEach(function(k){if(k.charAt(0)!=='_'&&k!=='pinned')o[k]=a[k]});return o});
   var data=JSON.stringify(clean,null,2);
   var blob=new Blob([data],{type:'application/json'});
   var url=URL.createObjectURL(blob);
@@ -866,7 +866,7 @@ function exportSelect(){
 function doExportSelected(){
   var checks=document.querySelectorAll('.exp-chk:checked');
   var selected=[];
-  checks.forEach(function(ch){var a=agents[parseInt(ch.value)];var o={};Object.keys(a).forEach(function(k){if(k.charAt(0)!=='_')o[k]=a[k]});selected.push(o)});
+  checks.forEach(function(ch){var a=agents[parseInt(ch.value)];var o={};Object.keys(a).forEach(function(k){if(k.charAt(0)!=='_'&&k!=='pinned')o[k]=a[k]});selected.push(o)});
   if(!selected.length){alert('Select at least one agent');return}
   var data=JSON.stringify(selected,null,2);
   var blob=new Blob([data],{type:'application/json'});
@@ -1037,7 +1037,7 @@ function renderCreate(c,existing){
   h+='<div class="cs"><div class="cl">NAME</div><input class="cin" id="c-name" value="'+esc(d.name)+'" placeholder="Agent name..." oninput="updPv()"></div>';
   h+='<div class="cs"><div class="cl">ROLE</div><input class="cin" id="c-role" value="'+esc(d.role||'')+'" placeholder="e.g. Researcher..."></div>';
   h+=op('c-personality',PERSONALITIES,d.personality,'PERSONALITY');
-  h+='<div class="cs"><div class="cl">SKILLS</div><div id="stags">'+(d.skills||[]).map(function(s,i){return'<span class="stag">'+esc(s)+'<span class="rm" onclick="rmSk('+i+')">x</span></span>'}).join('')+'</div><button class="sk-learn" onclick="saveAgent();skSubTab=\'library\';switchTab(\'skills\')" style="margin-top:5px;width:100%">ADD SKILLS IN LIBRARY</button><input type="hidden" id="c-skills" value=\''+JSON.stringify(d.skills||[])+'\'></div>';
+  h+='<div class="cs"><div class="cl">SKILLS</div><div id="stags">'+(d.skills||[]).map(function(s,i){return'<span class="stag">'+esc(s)+'<span class="rm" onclick="rmSk('+i+')">x</span></span>'}).join('')+'</div><button class="sk-learn" onclick="saveAgent();skSubTab=\'library\';switchTab(\'skills\')" style="margin-top:5px;width:100%">ADD SKILLS IN LIBRARY</button><input type="hidden" id="c-skills" value="'+esc(JSON.stringify(d.skills||[]))+'"></div>';
   h+='<div class="cs"><div class="cl">STATUS</div><select class="csel" id="c-state">'+Object.keys(STATES).map(function(k){return'<option value="'+k+'"'+(d.state===k?' selected':'')+'>'+STATES[k].l+'</option>'}).join('')+'</select></div>';
   h+='<div class="cs"><div class="cl">TASK</div><input class="cin" id="c-task" value="'+esc(d.task||'')+'" placeholder="What is this agent doing?"></div>';
   h+='<div class="cs"><div class="cl">PLATFORM</div><select class="csel" id="c-platform"><option value="claude"'+(d.platform==='claude'?' selected':'')+'>Claude</option><option value="chatgpt"'+(d.platform==='chatgpt'?' selected':'')+'>ChatGPT</option><option value="gemini"'+(d.platform==='gemini'?' selected':'')+'>Gemini</option><option value="local"'+(d.platform==='local'?' selected':'')+'>Local</option></select></div>';
@@ -2860,6 +2860,7 @@ async function cmShareAgent(idx){
   if(!sb||!sbUser)return;
   var target=document.getElementById('cm-share-user');
   if(!target||!target.value.trim()){alert('Enter a recipient username');return}
+  var btn=event&&event.target;if(btn)btn.disabled=true;
   var a=agents[idx];
   var clean={};Object.keys(a).forEach(function(k){if(k.charAt(0)!=='_')clean[k]=a[k]});
   // Mark as clone for recipient
@@ -2870,7 +2871,7 @@ async function cmShareAgent(idx){
 
   try{
     var res=await sb.from('profiles').select('id').eq('username',target.value.trim()).single();
-    if(!res.data){alert('User not found: '+target.value.trim());return}
+    if(!res.data){alert('User not found: '+target.value.trim());if(btn)btn.disabled=false;return}
     await sb.from('shared_agents').insert({
       from_user:sbUser.id,
       to_user:res.data.id,
@@ -2880,18 +2881,20 @@ async function cmShareAgent(idx){
     });
     alert(a.name+' cloned to '+target.value.trim()+'! They will receive a locked copy.');
   }catch(e){alert('Error: '+(e.message||'Could not clone agent'))}
+  if(btn)btn.disabled=false;
 }
 
 async function cmProposeTrade(idx){
   if(!sb||!sbUser)return;
   var target=document.getElementById('cm-trade-user');
   if(!target||!target.value.trim()){alert('Enter a trade partner username');return}
+  var btn=event&&event.target;if(btn)btn.disabled=true;
   var a=agents[idx];
   var clean={};Object.keys(a).forEach(function(k){if(k.charAt(0)!=='_')clean[k]=a[k]});
 
   try{
     var res=await sb.from('profiles').select('id').eq('username',target.value.trim()).single();
-    if(!res.data){alert('User not found');return}
+    if(!res.data){alert('User not found');if(btn)btn.disabled=false;return}
     await sb.from('shared_agents').insert({
       from_user:sbUser.id,
       to_user:res.data.id,
@@ -2902,12 +2905,14 @@ async function cmProposeTrade(idx){
     });
     alert('Trade offer sent to '+target.value.trim()+'! They need to accept and offer an agent back.');
   }catch(e){alert('Error: '+(e.message||'Could not propose trade'))}
+  if(btn)btn.disabled=false;
 }
 
 async function cmLendAgent(idx){
   if(!sb||!sbUser)return;
   var target=document.getElementById('cm-lend-user');
   if(!target||!target.value.trim()){alert('Enter borrower username');return}
+  var btn=event&&event.target;if(btn)btn.disabled=true;
   var a=agents[idx];
   var clean={};Object.keys(a).forEach(function(k){if(k.charAt(0)!=='_')clean[k]=a[k]});
   // Mark for borrower
@@ -2918,7 +2923,7 @@ async function cmLendAgent(idx){
 
   try{
     var res=await sb.from('profiles').select('id').eq('username',target.value.trim()).single();
-    if(!res.data){alert('User not found');return}
+    if(!res.data){alert('User not found');if(btn)btn.disabled=false;return}
     await sb.from('shared_agents').insert({
       from_user:sbUser.id,
       to_user:res.data.id,
@@ -2934,6 +2939,7 @@ async function cmLendAgent(idx){
     alert(a.name+' lent to '+target.value.trim()+'! Returns after breeding, deployment, or 24 hours.');
     renderCommunity(document.getElementById('cb'));
   }catch(e){alert('Error: '+(e.message||'Could not lend agent'))}
+  if(btn)btn.disabled=false;
 }
 
 async function cmLoadPendingTrades(){
@@ -2961,6 +2967,7 @@ async function cmLoadPendingTrades(){
 
 async function cmAcceptRequest(id){
   if(!sb||!sbUser)return;
+  var btn=event&&event.target;if(btn)btn.disabled=true;
   try{
     var res=await sb.from('shared_agents').select('*').eq('id',id).single();
     if(!res.data)return;
@@ -2997,16 +3004,17 @@ async function cmAcceptRequest(id){
       alert(ag.name+' borrowed! Use for breeding or deploy. Returns automatically.');
     }
     renderCommunity(document.getElementById('cb'));
-  }catch(e){alert('Error accepting: '+(e.message||'Unknown error'))}
+  }catch(e){alert('Error accepting: '+(e.message||'Unknown error'));if(btn)btn.disabled=false}
 }
 
 async function cmDeclineRequest(id){
   if(!sb||!sbUser)return;
+  var btn=event&&event.target;if(btn)btn.disabled=true;
   try{
     await sb.from('shared_agents').update({status:'declined'}).eq('id',id);
     alert('Request declined.');
     cmLoadPendingTrades();
-  }catch(e){alert('Error declining')}
+  }catch(e){alert('Error declining');if(btn)btn.disabled=false}
 }
 
 async function cmPublishSkill(idx){
