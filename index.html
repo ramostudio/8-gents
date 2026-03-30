@@ -3153,6 +3153,7 @@ async function cmAddFriend(){
   try{
     var res=await sb.from('profiles').select('id').eq('username',uname).single();
     if(!res.data){alert('User not found: '+uname);if(btn)btn.disabled=false;return}
+    if(res.data.id===sbUser.id){alert("You can't add yourself as a friend");if(btn)btn.disabled=false;return}
     var exists=cmFriendsList.filter(function(f){return f.friend_username===uname});
     if(exists.length){alert(uname+' is already your friend');if(btn)btn.disabled=false;return}
     await sb.from('friends').insert({
