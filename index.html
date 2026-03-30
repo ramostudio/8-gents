@@ -1014,12 +1014,12 @@ function openModal(idx){
   document.getElementById('modal-bg').classList.add('open');
 }
 function closeModal(){document.getElementById('modal-bg').classList.remove('open');modalIdx=-1;renderTab()}
-function mUpd(k,v){if(modalIdx>=0&&agents[modalIdx]){if(k==='personality'&&agents[modalIdx]._parents)return;agents[modalIdx][k]=v;if(k==='state'){if(v==='working'||v==='collab'){if(!agents[modalIdx]._workStart)agents[modalIdx]._workStart=Date.now()}else{if(v!=='done')agents[modalIdx]._workStart=null}if(v!=='done')agents[modalIdx]._doneClaimed=false}save();if(k==='name')document.getElementById('m-title').textContent=v}}
+function mUpd(k,v){if(modalIdx>=0&&agents[modalIdx]){var _a=agents[modalIdx];var _lk=(_a._isClone&&(_a._cloneTasksDone||0)<3)||_a._isBorrowed||_a._isLent;if(_lk&&k!=='state')return;if(k==='personality'&&_a._parents)return;agents[modalIdx][k]=v;if(k==='state'){if(v==='working'||v==='collab'){if(!agents[modalIdx]._workStart)agents[modalIdx]._workStart=Date.now()}else{if(v!=='done')agents[modalIdx]._workStart=null}if(v!=='done')agents[modalIdx]._doneClaimed=false}save();if(k==='name')document.getElementById('m-title').textContent=v}}
 function mGoLearn(){if(modalIdx<0)return;skLearnAgent=modalIdx;closeModal();switchTab('skills');skSubTab='library';renderSkills(document.getElementById('cb'))}
-function mRmSk(si){if(modalIdx<0)return;var a=agents[modalIdx];if(!a.skills)return;a.skills.splice(si,1);save();mRefreshSk()}
-function mRefreshSk(){if(modalIdx<0)return;var a=agents[modalIdx];document.getElementById('m-sk-tags').innerHTML=(a.skills||[]).map(function(s,si){var isMut=a._hasMutation&&a._mutSkill===s&&!a._mutRevealed;return isMut?'<span class="wed-sk-tag wed-sk-mystery" style="font-size:9px;padding:4px 8px">???</span>':'<span class="stag" style="font-size:9px;padding:4px 8px">'+esc(s)+'<span class="rm" onclick="mRmSk('+si+')">x</span></span>'}).join('')}
-function editLook(){if(modalIdx<0)return;var eid=modalIdx;document.getElementById('modal-bg').classList.remove('open');modalIdx=-1;editId=eid;curTab='create';document.querySelectorAll('.mi').forEach(function(m){m.classList.toggle('ac',m.dataset.tab==='create')});document.getElementById('pt').textContent=PG.create.t;document.getElementById('ps').textContent=PG.create.s;renderCreate(document.getElementById('cb'),agents[eid])}
-function delModal(){if(modalIdx<0||!confirm('Delete '+agents[modalIdx].name+'?'))return;agents.splice(modalIdx,1);save();closeModal()}
+function mRmSk(si){if(modalIdx<0)return;var a=agents[modalIdx];if(!a.skills)return;if((a._isClone&&(a._cloneTasksDone||0)<3)||a._isBorrowed||a._isLent)return;a.skills.splice(si,1);save();mRefreshSk()}
+function mRefreshSk(){if(modalIdx<0)return;var a=agents[modalIdx];var isLk=(a._isClone&&(a._cloneTasksDone||0)<3)||a._isBorrowed||a._isLent;document.getElementById('m-sk-tags').innerHTML=(a.skills||[]).map(function(s,si){var isMut=a._hasMutation&&a._mutSkill===s&&!a._mutRevealed;return isMut?'<span class="wed-sk-tag wed-sk-mystery" style="font-size:9px;padding:4px 8px">???</span>':'<span class="stag" style="font-size:9px;padding:4px 8px">'+esc(s)+(isLk?'':'<span class="rm" onclick="mRmSk('+si+')">x</span>')+'</span>'}).join('')}
+function editLook(){if(modalIdx<0)return;var _a=agents[modalIdx];if(_a&&((_a._isClone&&(_a._cloneTasksDone||0)<3)||_a._isBorrowed||_a._isLent)){alert('This agent is locked');return}var eid=modalIdx;document.getElementById('modal-bg').classList.remove('open');modalIdx=-1;editId=eid;curTab='create';document.querySelectorAll('.mi').forEach(function(m){m.classList.toggle('ac',m.dataset.tab==='create')});document.getElementById('pt').textContent=PG.create.t;document.getElementById('ps').textContent=PG.create.s;renderCreate(document.getElementById('cb'),agents[eid])}
+function delModal(){if(modalIdx<0)return;var _a=agents[modalIdx];if(_a._isBorrowed){alert('Return borrowed agents first');return}if(_a._isLent){alert('Agent is on loan');return}if(!confirm('Delete '+_a.name+'?'))return;agents.splice(modalIdx,1);save();closeModal()}
 
 // ═══ CREATE TAB ═══
 function renderCreate(c,existing){
@@ -3152,18 +3152,29 @@ async function cmAddFriend(){
   var btn=event&&event.target;if(btn)btn.disabled=true;
   try{
     var res=await sb.from('profiles').select('id').eq('username',uname).single();
+    console.log('[cmAddFriend] profiles query result:', JSON.stringify(res));
+    if(res.error){alert('Lookup error: '+res.error.message);if(btn)btn.disabled=false;return}
     if(!res.data){alert('User not found: '+uname);if(btn)btn.disabled=false;return}
     if(res.data.id===sbUser.id){alert("You can't add yourself as a friend");if(btn)btn.disabled=false;return}
     var exists=cmFriendsList.filter(function(f){return f.friend_username===uname});
     if(exists.length){alert(uname+' is already your friend');if(btn)btn.disabled=false;return}
-    await sb.from('friends').insert({
+    var myName2=sbUser.user_metadata&&sbUser.user_metadata.username||sbUser.email.split('@')[0];
+    var insRes=await sb.from('friends').insert({
       user_id:sbUser.id,
       friend_id:res.data.id,
       friend_username:uname
     });
+    console.log('[cmAddFriend] friends insert result:', JSON.stringify(insRes));
+    if(insRes.error){alert('Insert error: '+insRes.error.message);if(btn)btn.disabled=false;return}
+    // Insert reverse record so friend also sees us; ignore if already exists
+    await sb.from('friends').upsert({
+      user_id:res.data.id,
+      friend_id:sbUser.id,
+      friend_username:myName2
+    },{onConflict:'user_id,friend_id',ignoreDuplicates:true});
     input.value='';
     await cmLoadFriends();
-  }catch(e){alert('Error: '+(e.message||'Could not add friend'))}
+  }catch(e){console.log('[cmAddFriend] exception:',e);alert('Error: '+(e.message||'Could not add friend'))}
   if(btn)btn.disabled=false;
 }
 
@@ -3171,7 +3182,10 @@ async function cmRemoveFriend(friendId){
   if(!sb||!sbUser)return;
   var btn=event&&event.target;if(btn)btn.disabled=true;
   try{
+    // Get the friend_id before deleting so we can remove the reverse record too
+    var row=cmFriendsList.filter(function(f){return f.id===friendId})[0];
     await sb.from('friends').delete().eq('id',friendId).eq('user_id',sbUser.id);
+    if(row){await sb.from('friends').delete().eq('user_id',row.friend_id).eq('friend_id',sbUser.id)}
     await cmLoadFriends();
   }catch(e){alert('Error removing friend')}
   if(btn)btn.disabled=false;
