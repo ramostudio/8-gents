@@ -2506,6 +2506,8 @@ function dpToggleCollabPicker(){
 
 function dpSelectCollab(i){
   if(i===dpAgent){alert('Select a different agent for the collab slot.');return;}
+  if(agents[i]._isLent){alert('This agent is on loan. Wait for it to return.');return;}
+  if(agents[i]._isBorrowed){alert('Borrowed agents cannot be used as collab partners.');return;}
   if(dpAgent2>=0&&agents[dpAgent2]){
     var old2=agents[dpAgent2];
     if(old2.state==='collab'){old2.state='idle';}
@@ -2579,7 +2581,14 @@ function renderDeploy(c){
       h+='<div style="font-size:7px;color:var(--cyan);margin-bottom:6px">SELECT COLLAB PARTNER:</div>';
       h+='<div class="dp-agent-sel">';
       agents.forEach(function(a,i){
-        if(i!==dpAgent){h+='<button class="sk-tab" onclick="dpSelectCollab('+i+')">'+esc(a.name)+'</button>';}
+        if(i!==dpAgent){
+          var blocked=a._isLent||a._isBorrowed;
+          if(blocked){
+            h+='<button class="sk-tab" disabled style="opacity:0.3;cursor:not-allowed">'+esc(a.name)+'</button>';
+          } else {
+            h+='<button class="sk-tab" onclick="dpSelectCollab('+i+')">'+esc(a.name)+'</button>';
+          }
+        }
       });
       h+='</div></div>';
     }
