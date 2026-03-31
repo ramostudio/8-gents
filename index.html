@@ -3607,8 +3607,13 @@ async function cmDismissNotif(id){
   try{
     await sb.from('shared_agents').delete().eq('to_user',sbUser.id).in('status',['notify_declined','notify_expired']);
   }catch(e){}
-  await cmUpdateNotifBadge();
   renderCommunity(document.getElementById('cb'));
+  var badge=document.getElementById('cm-notif-badge');
+  if(badge){
+    var cnt=parseInt(badge.textContent||'0');
+    if(cnt>0)badge.textContent=Math.max(0,cnt-1);
+    if(cnt<=1)badge.style.display='none';
+  }
 }
 
 async function cmSendCounterOffer(id){
