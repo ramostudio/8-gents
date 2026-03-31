@@ -1443,25 +1443,20 @@ function wedConfirm(){
   wedChild.id='agent_'+String(nxId).padStart(2,'0');
   nxId++;agents.push(wedChild);save();
   // Auto-return borrowed parents after breeding
-  var borrowedReturned=[];
-  [wedP1,wedP2].forEach(function(pidx){
-    if(pidx>=0&&agents[pidx]&&agents[pidx]._isBorrowed){
-      borrowedReturned.push(agents[pidx].name);
-      if(sb&&sbUser){
-        sb.from('shared_agents').update({status:'returned'}).eq('to_user',sbUser.id).eq('type','lend').eq('status','active').then(function(){});
+  for(var bi=agents.length-1;bi>=0;bi--){
+    var ba=agents[bi];
+    if(bi===wedP1||bi===wedP2){
+      if(ba._isBorrowed){
+        agents.splice(bi,1);
+        // Adjust wedP1/wedP2 indices after splice
+        if(bi<wedP1)wedP1--;
+        if(bi<wedP2)wedP2--;
       }
     }
-  });
-  // Remove borrowed parents (splice in reverse index order)
-  var toRemove=[];
-  [wedP1,wedP2].forEach(function(pidx){if(pidx>=0&&agents[pidx]&&agents[pidx]._isBorrowed)toRemove.push(pidx);});
-  toRemove.sort(function(a,b){return b-a;});
-  toRemove.forEach(function(i){agents.splice(i,1);});
-  if(toRemove.length>0)save();
+  }
+  save();
   wedStep=0;wedP1=-1;wedP2=-1;wedMode='';wedChild=null;wedSlot=0;wedRerolls=0;wedGmoChecked={};
-  var msg=agents[agents.length-1].name+' has been born!';
-  if(borrowedReturned.length>0)msg+='\n\nBorrowed agent(s) returned: '+borrowedReturned.join(', ');
-  alert(msg);
+  alert(agents[agents.length-1].name+' has been born!');
   switchTab('agents');
 }
 
