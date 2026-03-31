@@ -876,6 +876,7 @@ function renderAgents(c){
     if(a._isClone)badges+='<div class="ag-badge clone">CLONE</div>';
     if(a._isLent)badges+='<div class="ag-badge lent">ON LOAN</div>';
     if(a._isBorrowed)badges+='<div class="ag-badge borrowed">BORROWED</div>';
+    if(a._pendingTrade)badges+='<div class="ag-badge" style="background:rgba(230,126,34,0.15);color:var(--orange);border:1px solid rgba(230,126,34,0.3)">TRADING</div>';
     if((a._isClone&&(a._cloneTasksDone||0)<3)||a._isBorrowed)badges+='<div class="ag-badge locked" style="top:auto;bottom:4px;right:4px;left:auto">LOCKED</div>';
     h+='<div class="ag-card" onclick="openModal('+i+')"><button class="ag-pin '+pin+'" onclick="event.stopPropagation();togglePin('+i+')">'+(a.pinned?'*':'*')+'</button>'+badges+'<div class="ag-sprite">'+renderChar(a,4)+'</div><div class="ag-info"><div class="ag-name">'+esc(a.name)+'</div><div class="ag-role">'+esc(a.role||'—')+'</div><div class="ag-plat">'+esc(a.platform||'claude')+'</div></div></div>';
   });
@@ -1315,7 +1316,7 @@ function renderMarriage(c){
     h+='<div style="font-size:8px;color:var(--gold2);margin:8px 0 4px;text-align:center">CHOOSE AGENTS '+(wedSlot===0?'FOR SLOT 1':'FOR SLOT 2')+'</div>';
     h+='<div class="wed-list">';
     agents.forEach(function(a,i){
-      var used=(wedP1===i||wedP2===i||a._isLent);
+      var used=(wedP1===i||wedP2===i||a._isLent||a._pendingTrade);
       h+='<div class="wed-li'+(used?' used':'')+'" onclick="'+(used?'':'wedPickParent('+i+')')+'">';
       h+='<div class="wl-sprite">'+renderChar(a,2)+'</div>';
       h+='<div class="wl-info"><div class="wl-name">'+esc(a.name)+'</div><div class="wl-role">'+esc(a.role||'\u2014')+'</div></div>';
@@ -2562,7 +2563,7 @@ function renderDeploy(c){
   h+='<div style="font-size:9px;color:var(--gold);margin-bottom:8px">SELECT AGENT TO DEPLOY</div>';
   h+='<div class="dp-agent-sel">';
   agents.forEach(function(a,i){
-    if(a._isLent){
+    if(a._isLent||a._pendingTrade){
       h+='<button class="sk-tab" disabled style="opacity:0.3;cursor:not-allowed">'+esc(a.name)+'</button>';
     } else {
       h+='<button class="sk-tab'+(dpAgent===i?' ac':'')+'" onclick="dpSelectAgent('+i+')">'+esc(a.name)+'</button>';
@@ -2586,7 +2587,7 @@ function renderDeploy(c){
       h+='<div class="dp-agent-sel">';
       agents.forEach(function(a,i){
         if(i!==dpAgent){
-          var blocked=a._isLent||a._isBorrowed;
+          var blocked=a._isLent||a._isBorrowed||a._pendingTrade;
           if(blocked){
             h+='<button class="sk-tab" disabled style="opacity:0.3;cursor:not-allowed">'+esc(a.name)+'</button>';
           } else {
@@ -3110,14 +3111,24 @@ async function cmUpdateNotifBadge(){
           await sb.from('shared_agents').insert({from_user:epr.to_user,to_user:epr.to_user,agent_data:JSON.stringify({message:'Trade expired — auto-declined after 24 hours.'}),type:'trade',status:'notify_expired'});
         }
       }
+      // Find expired pending trades FROM me — clear _pendingTrade flag
+      var expPendingFrom=await sb.from('shared_agents').select('id,agent_data').eq('from_user',sbUser.id).eq('type','trade').eq('status','pending').lt('created_at',cutoff);
+      if(expPendingFrom.data&&expPendingFrom.data.length){
+        var ptCleared=false;
+        for(var epf=0;epf<expPendingFrom.data.length;epf++){
+          try{var agNPt=JSON.parse(expPendingFrom.data[epf].agent_data).name||'';agents.forEach(function(a){if(a.name===agNPt&&a._pendingTrade){a._pendingTrade=false;ptCleared=true;}});}catch(pe){}
+        }
+        if(ptCleared){save();if(curTab==='agents')renderTab();}
+      }
       // Find expired offered trades FROM me
-      var expOffered=await sb.from('shared_agents').select('id,from_user,to_user').eq('from_user',sbUser.id).eq('type','trade').eq('status','offered').lt('created_at',cutoff);
+      var expOffered=await sb.from('shared_agents').select('id,from_user,to_user,agent_data').eq('from_user',sbUser.id).eq('type','trade').eq('status','offered').lt('created_at',cutoff);
       if(expOffered.data){
         for(var eo=0;eo<expOffered.data.length;eo++){
           var eor=expOffered.data[eo];
           await sb.from('shared_agents').update({status:'declined'}).eq('id',eor.id);
           await sb.from('shared_agents').insert({from_user:eor.from_user,to_user:eor.from_user,agent_data:JSON.stringify({message:'Trade expired — auto-declined after 24 hours.'}),type:'trade',status:'notify_expired'});
           await sb.from('shared_agents').insert({from_user:eor.to_user,to_user:eor.to_user,agent_data:JSON.stringify({message:'Trade expired — auto-declined after 24 hours.'}),type:'trade',status:'notify_expired'});
+          try{var bothPt=JSON.parse(eor.agent_data);var agNOff=(bothPt.sender&&bothPt.sender.name)||bothPt.name||'';agents.forEach(function(a){if(a.name===agNOff){a._pendingTrade=false;}});save();}catch(pe){}
         }
       }
     }catch(e){}
@@ -3188,7 +3199,11 @@ function renderCmShare(h,c){
     h+='<div style="flex-shrink:0">'+renderChar(a,2)+'</div>';
     h+='<div class="cm-agent-info"><div class="cm-agent-name">'+esc(a.name)+'</div><div class="cm-agent-role">'+esc(a.role||'\u2014')+'</div>';
     h+='<div class="cm-agent-skills">'+(a.skills||[]).slice(0,3).join(', ')+(a.skills&&a.skills.length>3?' +'+(a.skills.length-3)+' more':'')+'</div></div>';
-    h+='<button class="cm-btn share" onclick="cmShareAgent('+i+')">CLONE</button>';
+    if(a._pendingTrade){
+      h+='<button class="cm-btn share" disabled style="opacity:0.3;cursor:not-allowed">CLONE</button>';
+    } else {
+      h+='<button class="cm-btn share" onclick="cmShareAgent('+i+')">CLONE</button>';
+    }
     h+='</div>';
   });
   h+='</div>';
@@ -3222,7 +3237,7 @@ function renderCmLend(h,c){
   h+='<div class="cm-title">LEND FOR BREEDING</div>';
   h+='<div class="cm-desc">Loan your agent for breeding or deployment. Auto-returns after: breeding completes, task deployment completes, or 24 hours \u2014 whichever comes first. You earn +10 XP when the agent returns. Agent is locked while on loan.</div>';
 
-  var lendable=agents.filter(function(a){return!a._isLent&&!a._isBorrowed});
+  var lendable=agents.filter(function(a){return!a._isLent&&!a._isBorrowed&&!a._pendingTrade});
   if(!lendable.length){h+='<div style="color:var(--text3);font-size:9px;padding:10px">No agents available to lend.</div>';h+='</div>';c.innerHTML=h;return}
 
   h+='<div style="margin-bottom:10px"><div style="font-size:8px;color:var(--gold2);margin-bottom:4px">BORROWER USERNAME</div>';
@@ -3363,6 +3378,7 @@ async function cmProposeTrade(idx){
       type:'trade',
       status:'pending'
     });
+    agents[idx]._pendingTrade=true;save();
     alert('Trade offer sent to '+target.value.trim()+'! They need to accept and offer an agent back.');
   }catch(e){alert('Error: '+(e.message||'Could not propose trade'))}
   if(btn)btn.disabled=false;
@@ -3593,6 +3609,9 @@ async function cmDeclineRequest(id){
         type:'trade',
         status:'notify_declined'
       });
+      if(rec.data.from_user===sbUser.id){
+        try{var adPt=JSON.parse(rec.data.agent_data);var agNPt=adPt.name||'';agents.forEach(function(a){if(a.name===agNPt){a._pendingTrade=false;}});save();}catch(pe){}
+      }
     }
     // If this was a lend and we are the lender, unlock our agent locally
     if(rec.data.type==='lend'){
