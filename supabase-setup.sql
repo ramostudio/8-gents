@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════
 -- 8-GENTS Supabase Database Setup (COMPLETE)
 -- Run this in Supabase SQL Editor (Dashboard → SQL Editor → New Query)
--- Last updated: March 30, 2026
+-- Last updated: March 31, 2026
 -- ═══════════════════════════════════════════════════
 
 -- 1. PROFILES TABLE
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS shared_agents (
   agent_data JSONB NOT NULL,
   from_agent_idx INTEGER,
   type TEXT NOT NULL CHECK (type IN ('share', 'trade', 'lend')),
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'accepted', 'declined', 'returned')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'accepted', 'declined', 'returned', 'offered', 'completed', 'notify_declined', 'notify_expired')),
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -113,7 +113,7 @@ CREATE POLICY "Users can delete own agents" ON agents FOR DELETE USING (auth.uid
 -- SHARED AGENTS
 CREATE POLICY "Users can view their shared agents" ON shared_agents FOR SELECT USING (auth.uid() = from_user OR auth.uid() = to_user);
 CREATE POLICY "Users can create shares" ON shared_agents FOR INSERT WITH CHECK (auth.uid() = from_user);
-CREATE POLICY "Users can update shares they received" ON shared_agents FOR UPDATE USING (auth.uid() = to_user OR auth.uid() = from_user);
+CREATE POLICY "Users can update shares they received or sent" ON shared_agents FOR UPDATE USING (auth.uid() = to_user OR auth.uid() = from_user);
 CREATE POLICY "Users can delete own shares" ON shared_agents FOR DELETE USING (auth.uid() = from_user OR auth.uid() = to_user);
 
 -- COMMUNITY SKILLS
