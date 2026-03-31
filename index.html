@@ -3431,8 +3431,24 @@ async function cmLoadPendingTrades(){
     // Set B: my trade offers that got counter-offered (offered) — I need to accept/decline
     var resB=await sb.from('shared_agents').select('*').eq('from_user',sbUser.id).eq('type','trade').eq('status','offered');
     var allCards=(resA.data||[]).concat(resB.data||[]);
+    // Check for notifications first (before early return)
+    var notifHtml='';
+    try{
+      var notifs=await sb.from('shared_agents').select('id,agent_data,status').eq('to_user',sbUser.id).in('status',['notify_declined','notify_expired']);
+      if(notifs.data&&notifs.data.length){
+        notifs.data.forEach(function(n){
+          var msg='Trade notification';
+          try{msg=JSON.parse(n.agent_data).message||msg}catch(e){}
+          var color=n.status==='notify_expired'?'var(--orange)':'var(--red)';
+          notifHtml+='<div class="cm-trade-pending" style="border-color:'+color+'">';
+          notifHtml+='<div style="font-size:9px;color:'+color+';margin-bottom:8px">'+esc(msg)+'</div>';
+          notifHtml+='<button class="cm-btn" onclick="cmDismissNotif(\''+n.id+'\')" style="color:var(--text);border-color:var(--border)">OK</button>';
+          notifHtml+='</div>';
+        });
+      }
+    }catch(e){}
     if(!allCards.length){
-      el.innerHTML='<div style="color:var(--text3);font-size:8px">No pending requests.</div>';
+      el.innerHTML=notifHtml||'<div style="color:var(--text3);font-size:8px">No pending requests.</div>';
       try{
         await sb.from('shared_agents').delete().eq('to_user',sbUser.id).in('status',['declined','completed']);
         await sb.from('shared_agents').delete().eq('from_user',sbUser.id).in('status',['declined','completed']);
@@ -3497,21 +3513,7 @@ async function cmLoadPendingTrades(){
       h+='</div>';
     });
     el.innerHTML=h;
-    // Show decline/expiry notifications
-    try{
-      var notifs=await sb.from('shared_agents').select('id,agent_data,status').eq('to_user',sbUser.id).in('status',['notify_declined','notify_expired']);
-      if(notifs.data&&notifs.data.length){
-        notifs.data.forEach(function(n){
-          var msg=JSON.parse(n.agent_data).message||'Trade notification';
-          var color=n.status==='notify_expired'?'var(--orange)':'var(--red)';
-          h+='<div class="cm-trade-pending" style="border-color:'+color+'">';
-          h+='<div style="font-size:9px;color:'+color+';margin-bottom:8px">'+esc(msg)+'</div>';
-          h+='<button class="cm-btn" onclick="cmDismissNotif(\''+n.id+'\')" style="color:var(--text);border-color:var(--border)">OK</button>';
-          h+='</div>';
-        });
-        el.innerHTML=h;
-      }
-    }catch(e){}
+    if(notifHtml){el.innerHTML=el.innerHTML+notifHtml;}
     try{
       await sb.from('shared_agents').delete().eq('to_user',sbUser.id).in('status',['declined','completed']);
       await sb.from('shared_agents').delete().eq('from_user',sbUser.id).in('status',['declined','completed']);
