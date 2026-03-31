@@ -3371,7 +3371,7 @@ async function cmLoadPendingTrades(){
   if(!el)return;
   try{
     // Pending incoming requests + accepted/returned trade cards ready to collect
-    var res=await sb.from('shared_agents').select('*').eq('to_user',sbUser.id).in('type',['trade','share','lend']).in('status',['pending','accepted','returned']);
+    var res=await sb.from('shared_agents').select('*').eq('to_user',sbUser.id).in('type',['trade','share','lend']).in('status',['pending']);
     if(!res.data||!res.data.length){el.innerHTML='<div style="color:var(--text3);font-size:8px">No pending requests.</div>';return}
     var h='';
     res.data.forEach(function(r){
@@ -3430,6 +3430,10 @@ async function cmLoadPendingTrades(){
       h+='</div>';
     });
     el.innerHTML=h;
+    try{
+      await sb.from('shared_agents').delete().eq('to_user',sbUser.id).in('status',['accepted','declined','returned']);
+      await sb.from('shared_agents').delete().eq('from_user',sbUser.id).in('status',['accepted','declined','returned']);
+    }catch(e){}
   }catch(e){el.innerHTML='<div style="color:var(--red)">Error loading requests</div>'}
 }
 
@@ -3494,7 +3498,9 @@ async function cmAcceptRequest(id){
       alert(ag.name+' borrowed! Use for breeding or deploy. Returns automatically.');
     }
     cmUpdateNotifBadge();
-    renderCommunity(document.getElementById('cb'));
+    var cardEl=document.getElementById('cm-card-'+id);
+    if(cardEl){cardEl.innerHTML='<div style="text-align:center;padding:16px;font-size:10px;color:var(--green)">ACCEPTED</div>'}
+    setTimeout(function(){renderCommunity(document.getElementById('cb'))},2500);
   }catch(e){alert('Error accepting: '+(e.message||'Unknown error'));if(btn)btn.disabled=false}
 }
 
@@ -3518,7 +3524,9 @@ async function cmDeclineRequest(id){
     }
     alert('Request declined.');
     cmUpdateNotifBadge();
-    renderCommunity(document.getElementById('cb'));
+    var cardEl=document.getElementById('cm-card-'+id);
+    if(cardEl){cardEl.innerHTML='<div style="text-align:center;padding:16px;font-size:10px;color:var(--red)">DECLINED</div>'}
+    setTimeout(function(){renderCommunity(document.getElementById('cb'))},2500);
   }catch(e){alert('Error declining');if(btn)btn.disabled=false}
 }
 
