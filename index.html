@@ -3224,7 +3224,11 @@ function renderCmTrade(h,c){
     h+='<div class="cm-agent-row">';
     h+='<div style="flex-shrink:0">'+renderChar(a,2)+'</div>';
     h+='<div class="cm-agent-info"><div class="cm-agent-name">'+esc(a.name)+'</div><div class="cm-agent-role">'+esc(a.role||'\u2014')+'</div></div>';
-    h+='<button class="cm-btn trade" onclick="cmProposeTrade('+i+')">OFFER</button>';
+    if(a._isLent){
+      h+='<button class="cm-btn trade" disabled style="opacity:0.3;cursor:not-allowed">OFFER</button>';
+    } else {
+      h+='<button class="cm-btn trade" onclick="cmProposeTrade('+i+')">OFFER</button>';
+    }
     h+='</div>';
   });
   h+='</div>';
@@ -3363,6 +3367,7 @@ async function cmProposeTrade(idx){
   if(!sb||!sbUser)return;
   var target=document.getElementById('cm-trade-user');
   if(!target||!target.value.trim()){alert('Enter a trade partner username');return}
+  if(agents[idx]._isLent){alert('This agent is on loan. Wait for it to return before trading.');return}
   var btn=event&&event.target;if(btn)btn.disabled=true;
   var a=agents[idx];
   var clean={};Object.keys(a).forEach(function(k){if(k.charAt(0)!=='_')clean[k]=a[k]});
