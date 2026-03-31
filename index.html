@@ -3602,16 +3602,13 @@ async function cmDeclineRequest(id){
 
 async function cmDismissNotif(id){
   if(!sb||!sbUser)return;
+  var btn=event&&event.target;
+  if(btn){var card=btn.closest('.cm-trade-pending');if(card)card.style.display='none';}
   try{
-    var del=await sb.from('shared_agents').delete().eq('id',parseInt(id));
-    if(del.error){
-      alert('Delete failed: '+del.error.message);
-    } else {
-      alert('Deleted record '+id+' — status: '+del.status);
-    }
-    renderCommunity(document.getElementById('cb'));
-    cmUpdateNotifBadge();
-  }catch(e){alert('Error: '+e.message)}
+    await sb.from('shared_agents').delete().eq('id',parseInt(id));
+  }catch(e){}
+  cmUpdateNotifBadge();
+  renderCommunity(document.getElementById('cb'));
 }
 
 async function cmSendCounterOffer(id){
