@@ -3084,6 +3084,14 @@ async function cmUpdateNotifBadge(){
         }
       }
     }catch(e){}
+    // 24hr auto-decline for expired trade records
+    try{
+      var cutoff=new Date(Date.now()-24*60*60*1000).toISOString();
+      // Expire pending trades sent TO me that I haven't responded to
+      await sb.from('shared_agents').update({status:'declined'}).eq('to_user',sbUser.id).eq('type','trade').eq('status','pending').lt('created_at',cutoff);
+      // Expire offered trades FROM me that I haven't accepted/declined
+      await sb.from('shared_agents').update({status:'declined'}).eq('from_user',sbUser.id).eq('type','trade').eq('status','offered').lt('created_at',cutoff);
+    }catch(e){}
   }catch(e){}
 }
 
