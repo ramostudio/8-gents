@@ -3603,10 +3603,15 @@ async function cmDeclineRequest(id){
 async function cmDismissNotif(id){
   if(!sb||!sbUser)return;
   try{
-    await sb.from('shared_agents').delete().eq('id',id);
+    // Remove from DOM immediately so user sees it disappear
+    var btns=document.querySelectorAll('.cm-btn');
+    btns.forEach(function(b){if(b.onclick&&b.getAttribute('onclick').indexOf(id)>=0){var card=b.parentElement;if(card)card.remove()}});
+    // Delete from Supabase
+    await sb.from('shared_agents').delete().eq('id',parseInt(id));
+    // Refresh badge and community tab
+    await cmUpdateNotifBadge();
     renderCommunity(document.getElementById('cb'));
-    cmUpdateNotifBadge();
-  }catch(e){}
+  }catch(e){console.log('Dismiss error:',e)}
 }
 
 async function cmSendCounterOffer(id){
