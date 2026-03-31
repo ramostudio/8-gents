@@ -1921,7 +1921,8 @@ function renderSkLibrary(h,c){
         h+='<option value="">TEACH TO...</option>';
         agents.forEach(function(a,ai){
           var owns=(a.skills||[]).indexOf(s.name)>=0;
-          h+='<option value="'+ai+'"'+(owns?' disabled':'')+'>'+esc(a.name)+(owns?' (knows)':'')+'</option>';
+          var blocked=a._isLent||a._isBorrowed||a._pendingTrade;
+          h+='<option value="'+ai+'"'+((owns||blocked)?' disabled':'')+'>'+esc(a.name)+(owns?' (knows)':blocked?' (locked)':'')+'</option>';
         });
         h+='</select>';
         h+='<button class="sk-learn" onclick="event.stopPropagation();skTeachFromCard(\'sk-teach-'+cardId+'\',\''+esc(s.name).replace(/'/g,"\\'")+'\','+s.cost+')" style="font-size:8px;padding:4px 10px;margin-top:0">'+(s.cost>0?'LEARN ('+s.cost+' XP)':'LEARN (FREE)')+'</button>';
@@ -1944,14 +1945,21 @@ function skTeachFromCard(selId,name,cost){
   var sel=document.getElementById(selId);
   if(!sel||sel.value===''){alert('Select an agent first');return}
   var idx=parseInt(sel.value);
+  var ag=agents[idx];
+  if(ag._isLent){alert('This agent is on loan. Cannot learn skills while lent.');return}
+  if(ag._isBorrowed){alert('Borrowed agents cannot learn new skills.');return}
+  if(ag._pendingTrade){alert('This agent has a pending trade. Cannot learn skills.');return}
   skLearnAgent=idx;
   buySkill(name,cost);
 }
 function buySkill(name,cost){
   if(skLearnAgent<0){alert('Select an agent first');return}
+  var ag=agents[skLearnAgent];
+  if(ag._isLent){alert('This agent is on loan. Cannot learn skills while lent.');return}
+  if(ag._isBorrowed){alert('Borrowed agents cannot learn new skills.');return}
+  if(ag._pendingTrade){alert('This agent has a pending trade. Cannot learn skills.');return}
   var pool=getXPPool();
   if(pool<cost){alert('Not enough XP in pool! You have '+Math.floor(Math.max(0,pool))+' XP.');return}
-  var ag=agents[skLearnAgent];
   if(!ag.skills)ag.skills=[];
   if(ag.skills.indexOf(name)>=0){alert('Already knows this!');return}
   ag.skills.push(name);
@@ -2036,7 +2044,7 @@ function renderSkMy(h,c){
         if(agents.length){
           h+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
           h+='<select class="csel" id="sk-mycust-'+cardId+'" onclick="event.stopPropagation()" style="flex:1;font-size:8px"><option value="">TEACH TO...</option>';
-          agents.forEach(function(a,ai){var owns=(a.skills||[]).indexOf(s.name)>=0;h+='<option value="'+ai+'"'+(owns?' disabled':'')+'>'+esc(a.name)+(owns?' (knows)':'')+'</option>'});
+          agents.forEach(function(a,ai){var owns=(a.skills||[]).indexOf(s.name)>=0;var blocked=a._isLent||a._isBorrowed||a._pendingTrade;h+='<option value="'+ai+'"'+((owns||blocked)?' disabled':'')+'>'+esc(a.name)+(owns?' (knows)':blocked?' (locked)':'')+'</option>'});
           h+='</select>';
           h+='<button class="sk-learn" onclick="event.stopPropagation();skTeachFromCard(\'sk-mycust-'+cardId+'\',\''+esc(s.name).replace(/'/g,"\\'")+'\','+s.cost+')" style="font-size:8px;padding:4px 10px;margin-top:0">'+(s.cost>0?'LEARN ('+s.cost+' XP)':'LEARN (FREE)')+'</button>';
           h+='</div>';
