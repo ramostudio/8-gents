@@ -1316,7 +1316,7 @@ function renderMarriage(c){
     h+='<div style="font-size:8px;color:var(--gold2);margin:8px 0 4px;text-align:center">CHOOSE AGENTS '+(wedSlot===0?'FOR SLOT 1':'FOR SLOT 2')+'</div>';
     h+='<div class="wed-list">';
     agents.forEach(function(a,i){
-      var used=(wedP1===i||wedP2===i||a._isLent||a._pendingTrade);
+      var used=(wedP1===i||wedP2===i||a._isLent||a._pendingTrade||a.state==='working'||a.state==='collab');
       h+='<div class="wed-li'+(used?' used':'')+'" onclick="'+(used?'':'wedPickParent('+i+')')+'">';
       h+='<div class="wl-sprite">'+renderChar(a,2)+'</div>';
       h+='<div class="wl-info"><div class="wl-name">'+esc(a.name)+'</div><div class="wl-role">'+esc(a.role||'\u2014')+'</div></div>';
@@ -1949,6 +1949,7 @@ function skTeachFromCard(selId,name,cost){
   if(ag._isLent){alert('This agent is on loan. Cannot learn skills while lent.');return}
   if(ag._isBorrowed){alert('Borrowed agents cannot learn new skills.');return}
   if(ag._pendingTrade){alert('This agent has a pending trade. Cannot learn skills.');return}
+  if(ag.state==='working'||ag.state==='collab'){alert('This agent is currently deployed. Stop the deployment first.');return}
   skLearnAgent=idx;
   buySkill(name,cost);
 }
@@ -1958,6 +1959,7 @@ function buySkill(name,cost){
   if(ag._isLent){alert('This agent is on loan. Cannot learn skills while lent.');return}
   if(ag._isBorrowed){alert('Borrowed agents cannot learn new skills.');return}
   if(ag._pendingTrade){alert('This agent has a pending trade. Cannot learn skills.');return}
+  if(ag.state==='working'||ag.state==='collab'){alert('This agent is currently deployed. Stop the deployment first.');return}
   var pool=getXPPool();
   if(pool<cost){alert('Not enough XP in pool! You have '+Math.floor(Math.max(0,pool))+' XP.');return}
   if(!ag.skills)ag.skills=[];
@@ -1974,7 +1976,7 @@ function renderSkTree(h,c){
   h+='<div style="margin-bottom:10px"><div style="font-size:8px;color:var(--gold2);margin-bottom:4px">SELECT AGENT</div>';
   h+='<div style="display:flex;gap:4px;flex-wrap:wrap">';
   agents.forEach(function(a,i){
-    if(a._isLent||a._isBorrowed||a._pendingTrade){
+    if(a._isLent||a._isBorrowed||a._pendingTrade||a.state==='working'||a.state==='collab'){
       h+='<button class="sk-tab" disabled style="opacity:0.3;cursor:not-allowed">'+esc(a.name)+'</button>';
     } else {
       h+='<button class="sk-tab'+(skLearnAgent===i?' ac':'')+'" onclick="skLearnAgent='+i+';renderSkills(document.getElementById(\'cb\'))">'+esc(a.name)+'</button>';
@@ -1983,7 +1985,7 @@ function renderSkTree(h,c){
   h+='</div></div>';
   if(skLearnAgent<0){c.innerHTML=h+'<div style="color:var(--text3);font-size:9px;padding:10px">Select an agent above.</div>';return}
   var ag=agents[skLearnAgent];
-  var agBlocked=ag._isLent||ag._isBorrowed||ag._pendingTrade;
+  var agBlocked=ag._isLent||ag._isBorrowed||ag._pendingTrade||ag.state==='working'||ag.state==='collab';
   var agSkills=ag.skills||[];
   h+='<div style="font-size:9px;color:var(--gold);margin-bottom:6px">'+esc(ag.name)+' \u2014 SKILL PROGRESSION</div>';
   h+='<div style="font-size:7px;color:var(--text3);margin-bottom:12px;line-height:1.8">'+(agBlocked?'This agent is locked and cannot learn skills right now.':'Click a locked skill to learn it. Skills further along a path require earlier skills first.')+'</div>';
@@ -2600,7 +2602,7 @@ function renderDeploy(c){
       h+='<div class="dp-agent-sel">';
       agents.forEach(function(a,i){
         if(i!==dpAgent){
-          var blocked=a._isLent||a._isBorrowed||a._pendingTrade;
+          var blocked=a._isLent||a._isBorrowed||a._pendingTrade||a.state==='working'||a.state==='collab';
           if(blocked){
             h+='<button class="sk-tab" disabled style="opacity:0.3;cursor:not-allowed">'+esc(a.name)+'</button>';
           } else {
@@ -3200,7 +3202,7 @@ function renderCmShare(h,c){
   h+='<div class="cm-title">CLONE AGENT</div>';
   h+='<div class="cm-desc">Send a clone of your agent to another user. You keep the original, they get a locked copy. Clone unlocks after 3 completed tasks (deployments). Free and unlimited.</div>';
 
-  var shareable=agents.filter(function(a){return!a._isBorrowed&&!a._isLent});
+  var shareable=agents.filter(function(a){return!a._isBorrowed&&!a._isLent&&a.state!=='working'&&a.state!=='collab'});
   if(!shareable.length){h+='<div style="color:var(--text3);font-size:9px;padding:10px">No agents available to clone.</div>';h+='</div>';c.innerHTML=h;return}
 
   h+='<div style="margin-bottom:10px"><div style="font-size:8px;color:var(--gold2);margin-bottom:4px">RECIPIENT USERNAME</div>';
@@ -3212,7 +3214,7 @@ function renderCmShare(h,c){
     h+='<div style="flex-shrink:0">'+renderChar(a,2)+'</div>';
     h+='<div class="cm-agent-info"><div class="cm-agent-name">'+esc(a.name)+'</div><div class="cm-agent-role">'+esc(a.role||'\u2014')+'</div>';
     h+='<div class="cm-agent-skills">'+(a.skills||[]).slice(0,3).join(', ')+(a.skills&&a.skills.length>3?' +'+(a.skills.length-3)+' more':'')+'</div></div>';
-    if(a._pendingTrade){
+    if(a._pendingTrade||a.state==='working'||a.state==='collab'){
       h+='<button class="cm-btn share" disabled style="opacity:0.3;cursor:not-allowed">CLONE</button>';
     } else {
       h+='<button class="cm-btn share" onclick="cmShareAgent('+i+')">CLONE</button>';
@@ -3237,7 +3239,7 @@ function renderCmTrade(h,c){
     h+='<div class="cm-agent-row">';
     h+='<div style="flex-shrink:0">'+renderChar(a,2)+'</div>';
     h+='<div class="cm-agent-info"><div class="cm-agent-name">'+esc(a.name)+'</div><div class="cm-agent-role">'+esc(a.role||'\u2014')+'</div></div>';
-    if(a._isLent||a._isBorrowed||a._pendingTrade){
+    if(a._isLent||a._isBorrowed||a._pendingTrade||a.state==='working'||a.state==='collab'){
       h+='<button class="cm-btn trade" disabled style="opacity:0.3;cursor:not-allowed">OFFER</button>';
     } else {
       h+='<button class="cm-btn trade" onclick="cmProposeTrade('+i+')">OFFER</button>';
@@ -3254,7 +3256,7 @@ function renderCmLend(h,c){
   h+='<div class="cm-title">LEND FOR BREEDING</div>';
   h+='<div class="cm-desc">Loan your agent for breeding or deployment. Auto-returns after: breeding completes, task deployment completes, or 24 hours \u2014 whichever comes first. You earn +10 XP when the agent returns. Agent is locked while on loan.</div>';
 
-  var lendable=agents.filter(function(a){return!a._isLent&&!a._isBorrowed&&!a._pendingTrade});
+  var lendable=agents.filter(function(a){return!a._isLent&&!a._isBorrowed&&!a._pendingTrade&&a.state!=='working'&&a.state!=='collab'});
   if(!lendable.length){h+='<div style="color:var(--text3);font-size:9px;padding:10px">No agents available to lend.</div>';h+='</div>';c.innerHTML=h;return}
 
   h+='<div style="margin-bottom:10px"><div style="font-size:8px;color:var(--gold2);margin-bottom:4px">BORROWER USERNAME</div>';
@@ -3352,6 +3354,7 @@ async function cmShareAgent(idx){
   if(!sb||!sbUser)return;
   var target=document.getElementById('cm-share-user');
   if(!target||!target.value.trim()){alert('Enter a recipient username');return}
+  if(agents[idx].state==='working'||agents[idx].state==='collab'){alert('This agent is currently deployed. Stop the deployment first.');return}
   var btn=event&&event.target;if(btn)btn.disabled=true;
   var a=agents[idx];
   var clean={};Object.keys(a).forEach(function(k){if(k.charAt(0)!=='_')clean[k]=a[k]});
@@ -3383,6 +3386,7 @@ async function cmProposeTrade(idx){
   if(agents[idx]._isLent){alert('This agent is on loan. Cannot trade while lent.');return}
   if(agents[idx]._isBorrowed){alert('Borrowed agents cannot be traded.');return}
   if(agents[idx]._pendingTrade){alert('This agent has a pending trade. Wait for it to resolve.');return}
+  if(agents[idx].state==='working'||agents[idx].state==='collab'){alert('This agent is currently deployed. Stop the deployment first.');return}
   var btn=event&&event.target;if(btn)btn.disabled=true;
   var a=agents[idx];
   var clean={};Object.keys(a).forEach(function(k){if(k.charAt(0)!=='_')clean[k]=a[k]});
@@ -3408,6 +3412,7 @@ async function cmLendAgent(idx){
   if(!sb||!sbUser)return;
   var target=document.getElementById('cm-lend-user');
   if(!target||!target.value.trim()){alert('Enter borrower username');return}
+  if(agents[idx].state==='working'||agents[idx].state==='collab'){alert('This agent is currently deployed. Stop the deployment first.');return}
   var btn=event&&event.target;if(btn)btn.disabled=true;
   var a=agents[idx];
   var clean={};Object.keys(a).forEach(function(k){if(k.charAt(0)!=='_')clean[k]=a[k]});
