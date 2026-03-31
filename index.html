@@ -3029,9 +3029,40 @@ async function cmUpdateNotifBadge(){
   try{
     var r1=await sb.from('shared_agents').select('id',{count:'exact',head:true}).eq('to_user',sbUser.id).eq('status','pending');
     var r2=await sb.from('friend_messages').select('id',{count:'exact',head:true}).eq('to_user',sbUser.id).eq('read',false);
-    var total=(r1.count||0)+(r2.count||0);
+    var r3=await sb.from('shared_agents').select('id',{count:'exact',head:true}).eq('from_user',sbUser.id).eq('type','trade').eq('status','offered');
+    var total=(r1.count||0)+(r2.count||0)+(r3.count||0);
     if(total>0){badge.textContent=total;badge.style.display='inline-block';}
     else{badge.style.display='none';}
+    // Process completed trades: receiver (to_user=me) side of the swap
+    try{
+      var completed=await sb.from('shared_agents').select('*').eq('to_user',sbUser.id).eq('type','trade').eq('status','completed');
+      if(completed.data&&completed.data.length){
+        var changed=false;
+        for(var ci=0;ci<completed.data.length;ci++){
+          var cr=completed.data[ci];
+          try{
+            var both=JSON.parse(cr.agent_data);
+            var senderAg=both.sender; // original sender's agent — arrives in my roster
+            var myOfferedAg=both.offer; // what I counter-offered — leaves my roster
+            // Add sender's agent to my roster (clean, fully owned)
+            senderAg.xp=senderAg.xp||0;
+            senderAg.level=getLevelFromXP(senderAg.xp);
+            senderAg.state='idle';senderAg.task='';senderAg.output='';
+            senderAg.id='agent_'+String(nxId).padStart(2,'0');nxId++;
+            delete senderAg._isClone;delete senderAg._cloneTasksDone;delete senderAg._cloneFrom;
+            delete senderAg._isBorrowed;delete senderAg._isLent;delete senderAg._lentBy;
+            agents.push(senderAg);
+            // Remove my offered agent from roster by name match
+            var rmI=-1;
+            agents.forEach(function(a,i){if(a.name===myOfferedAg.name&&rmI<0)rmI=i;});
+            if(rmI>=0)agents.splice(rmI,1);
+            changed=true;
+          }catch(pe){}
+          await sb.from('shared_agents').delete().eq('id',cr.id);
+        }
+        if(changed){save();if(curTab==='agents')renderTab();}
+      }
+    }catch(e){}
     // Poll for returned/declined lent agents and unlock lender's copy
     try{
       var lentCheck=await sb.from('shared_agents').select('id,agent_data,status').eq('from_user',sbUser.id).eq('type','lend').in('status',['declined','returned']);
@@ -3370,58 +3401,51 @@ async function cmLoadPendingTrades(){
   var el=document.getElementById('cm-pending-global');
   if(!el)return;
   try{
-    // Pending incoming requests + accepted/returned trade cards ready to collect
-    var res=await sb.from('shared_agents').select('*').eq('to_user',sbUser.id).in('type',['trade','share','lend']).in('status',['pending']);
-    if(!res.data||!res.data.length){el.innerHTML='<div style="color:var(--text3);font-size:8px">No pending requests.</div>';return}
+    // Set A: incoming to me (pending) — I need to respond
+    var resA=await sb.from('shared_agents').select('*').eq('to_user',sbUser.id).in('type',['trade','share','lend']).eq('status','pending');
+    // Set B: my trade offers that got counter-offered (offered) — I need to accept/decline
+    var resB=await sb.from('shared_agents').select('*').eq('from_user',sbUser.id).eq('type','trade').eq('status','offered');
+    var allCards=(resA.data||[]).concat(resB.data||[]);
+    if(!allCards.length){
+      el.innerHTML='<div style="color:var(--text3);font-size:8px">No pending requests.</div>';
+      try{
+        await sb.from('shared_agents').delete().eq('to_user',sbUser.id).in('status',['declined','completed']);
+        await sb.from('shared_agents').delete().eq('from_user',sbUser.id).in('status',['declined','completed']);
+      }catch(e){}
+      return;
+    }
     var h='';
-    res.data.forEach(function(r){
+    // Set A: incoming pending requests
+    (resA.data||[]).forEach(function(r){
       var ag=JSON.parse(r.agent_data);
       h+='<div class="cm-trade-pending" id="cm-card-'+r.id+'">';
-      if(r.type==='trade'&&(r.status==='accepted'||r.status==='returned')){
-        if(r.status==='returned'){
-          // Agent returned after partner declined — just collect it back
-          h+='<div style="font-size:8px;color:var(--text2);margin-bottom:8px">AGENT RETURNED TO YOU</div>';
-          h+=cmAgentPreviewCard(ag);
-          h+='<div style="display:flex;gap:6px;margin-top:8px">';
-          h+='<button class="cm-btn share" onclick="cmCollectTrade(\''+r.id+'\')">COLLECT</button>';
-          h+='</div>';
-        } else {
-          // Trade completed — sender reviews and collects or declines
-          h+='<div style="font-size:8px;color:var(--cyan);margin-bottom:8px">TRADE COMPLETE \u2014 YOUR AGENT ARRIVED</div>';
-          h+=cmAgentPreviewCard(ag);
-          h+='<div style="display:flex;gap:6px;margin-top:8px">';
-          h+='<button class="cm-btn share" onclick="cmCollectTrade(\''+r.id+'\')">COLLECT</button>';
-          h+='<button class="cm-btn" style="color:var(--red);border-color:var(--red)" onclick="cmDeclineTrade(\''+r.id+'\')">DECLINE</button>';
-          h+='</div>';
-        }
+      h+='<div style="font-size:8px;color:var(--orange);margin-bottom:8px">'+r.type.toUpperCase()+' REQUEST</div>';
+      if(r.type==='trade'){
+        var dupWarn='';
+        var dupMatch=agents.filter(function(x){return x.name===ag.name;});
+        if(dupMatch.length>0)dupWarn='<div style="font-size:7px;color:var(--gold);margin-top:6px">\u26a0 You already have an agent named &quot;'+esc(ag.name)+'&quot;</div>';
+        h+='<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">';
+        h+='<div><div style="font-size:7px;color:var(--text2);margin-bottom:4px;text-align:center">INCOMING</div>'+cmAgentPreviewCard(ag)+dupWarn+'</div>';
+        h+='<div style="font-size:9px;color:var(--text2);padding-top:36px;flex-shrink:0">VS</div>';
+        h+='<div><div style="font-size:7px;color:var(--text2);margin-bottom:4px;text-align:center">YOUR OFFER</div>';
+        h+='<div id="cm-offer-preview-'+r.id+'" style="min-width:110px"><div style="min-width:110px;max-width:145px;height:80px;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:7px;text-align:center;padding:10px;border:2px dashed var(--border);border-radius:4px;line-height:2">SELECT<br>AN AGENT</div></div>';
+        h+='</div></div>';
+        h+='<div style="font-size:7px;color:var(--text2);margin-bottom:4px">SELECT AGENT TO OFFER:</div>';
+        h+='<select id="cm-trade-offer-'+r.id+'" onchange="cmShowOfferPreview(\''+r.id+'\')" style="width:100%;font-size:7px;padding:4px 6px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:\'Press Start 2P\',monospace">';
+        h+='<option value="">-- select agent --</option>';
+        agents.forEach(function(a,i){
+          var locked=(a._isClone&&(a._cloneTasksDone||0)<3)||a._isBorrowed||a._isLent;
+          if(!locked){h+='<option value="'+i+'">'+esc(a.name)+' ('+esc(a.role||'no role')+')</option>';}
+        });
+        h+='</select>';
+        h+='<div style="display:flex;gap:6px;margin-top:6px">';
+        h+='<button class="cm-btn share" onclick="cmSendCounterOffer(\''+r.id+'\')">SEND</button>';
+        h+='<button class="cm-btn" style="color:var(--red);border-color:var(--red)" onclick="cmDeclineRequest(\''+r.id+'\')">DECLINE</button>';
+        h+='</div>';
       } else {
-        h+='<div style="font-size:8px;color:var(--orange);margin-bottom:8px">'+r.type.toUpperCase()+' REQUEST</div>';
-        if(r.type==='trade'){
-          // Duplicate name warning
-          var dupWarn='';
-          var dupMatch=agents.filter(function(x){return x.name===ag.name;});
-          if(dupMatch.length>0)dupWarn='<div style="font-size:7px;color:var(--gold);margin-top:6px">\u26a0 You already have an agent named &quot;'+esc(ag.name)+'&quot;</div>';
-          // Side-by-side preview: incoming vs your offer
-          h+='<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">';
-          h+='<div><div style="font-size:7px;color:var(--text2);margin-bottom:4px;text-align:center">INCOMING</div>'+cmAgentPreviewCard(ag)+dupWarn+'</div>';
-          h+='<div style="font-size:9px;color:var(--text2);padding-top:36px;flex-shrink:0">VS</div>';
-          h+='<div><div style="font-size:7px;color:var(--text2);margin-bottom:4px;text-align:center">YOUR OFFER</div>';
-          h+='<div id="cm-offer-preview-'+r.id+'" style="min-width:110px"><div style="min-width:110px;max-width:145px;height:80px;display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:7px;text-align:center;padding:10px;border:2px dashed var(--border);border-radius:4px;line-height:2">SELECT<br>AN AGENT</div></div>';
-          h+='</div></div>';
-          // Dropdown
-          h+='<div style="font-size:7px;color:var(--text2);margin-bottom:4px">SELECT AGENT TO OFFER:</div>';
-          h+='<select id="cm-trade-offer-'+r.id+'" onchange="cmShowOfferPreview(\''+r.id+'\')" style="width:100%;font-size:7px;padding:4px 6px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:3px;font-family:\'Press Start 2P\',monospace">';
-          h+='<option value="">-- select agent --</option>';
-          agents.forEach(function(a,i){
-            var locked=(a._isClone&&(a._cloneTasksDone||0)<3)||a._isBorrowed||a._isLent;
-            if(!locked){h+='<option value="'+i+'">'+esc(a.name)+' ('+esc(a.role||'no role')+')</option>';}
-          });
-          h+='</select>';
-        } else {
-          // Clone / lend — plain info row (no side-by-side)
-          h+='<div style="font-size:9px;color:var(--gold);margin-bottom:2px">'+esc(ag.name)+'</div>';
-          h+='<div style="font-size:7px;color:var(--text2);margin-bottom:6px">'+esc(ag.role||'no role')+' \u00b7 '+(ag.skills||[]).map(esc).join(', ')+'</div>';
-        }
+        // Clone / lend — plain info row
+        h+='<div style="font-size:9px;color:var(--gold);margin-bottom:2px">'+esc(ag.name)+'</div>';
+        h+='<div style="font-size:7px;color:var(--text2);margin-bottom:6px">'+esc(ag.role||'no role')+' \u00b7 '+(ag.skills||[]).map(esc).join(', ')+'</div>';
         h+='<div style="display:flex;gap:6px;margin-top:6px">';
         h+='<button class="cm-btn share" onclick="cmAcceptRequest(\''+r.id+'\')">ACCEPT</button>';
         h+='<button class="cm-btn" style="color:var(--red);border-color:var(--red)" onclick="cmDeclineRequest(\''+r.id+'\')">DECLINE</button>';
@@ -3429,10 +3453,28 @@ async function cmLoadPendingTrades(){
       }
       h+='</div>';
     });
+    // Set B: counter-offers on my trades — I need to accept or decline
+    (resB.data||[]).forEach(function(r){
+      var both=JSON.parse(r.agent_data);
+      var myAg=both.sender;
+      var theirAg=both.offer;
+      h+='<div class="cm-trade-pending" id="cm-card-'+r.id+'">';
+      h+='<div style="font-size:8px;color:var(--cyan);margin-bottom:8px">COUNTER-OFFER RECEIVED</div>';
+      h+='<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">';
+      h+='<div><div style="font-size:7px;color:var(--text2);margin-bottom:4px;text-align:center">YOUR AGENT</div>'+cmAgentPreviewCard(myAg)+'</div>';
+      h+='<div style="font-size:9px;color:var(--text2);padding-top:36px;flex-shrink:0">VS</div>';
+      h+='<div><div style="font-size:7px;color:var(--text2);margin-bottom:4px;text-align:center">THEIR OFFER</div>'+cmAgentPreviewCard(theirAg)+'</div>';
+      h+='</div>';
+      h+='<div style="display:flex;gap:6px;margin-top:6px">';
+      h+='<button class="cm-btn share" onclick="cmAcceptTrade(\''+r.id+'\')">ACCEPT</button>';
+      h+='<button class="cm-btn" style="color:var(--red);border-color:var(--red)" onclick="cmDeclineRequest(\''+r.id+'\')">DECLINE</button>';
+      h+='</div>';
+      h+='</div>';
+    });
     el.innerHTML=h;
     try{
-      await sb.from('shared_agents').delete().eq('to_user',sbUser.id).in('status',['accepted','declined','returned']);
-      await sb.from('shared_agents').delete().eq('from_user',sbUser.id).in('status',['accepted','declined','returned']);
+      await sb.from('shared_agents').delete().eq('to_user',sbUser.id).in('status',['declined','completed']);
+      await sb.from('shared_agents').delete().eq('from_user',sbUser.id).in('status',['declined','completed']);
     }catch(e){}
   }catch(e){el.innerHTML='<div style="color:var(--red)">Error loading requests</div>'}
 }
@@ -3463,31 +3505,6 @@ async function cmAcceptRequest(id){
       agents.push(ag);nxId++;save();
       await sb.from('shared_agents').update({status:'accepted'}).eq('id',id);
       alert(ag.name+' clone received! Locked until 3 tasks completed.');
-    } else if(res.data.type==='trade'){
-      // Get the agent user is offering in return
-      var offerSel=document.getElementById('cm-trade-offer-'+id);
-      var offerIdx=offerSel?parseInt(offerSel.value):-1;
-      if(isNaN(offerIdx)||offerIdx<0||!agents[offerIdx]){
-        alert('Select an agent to trade.');
-        if(btn)btn.disabled=false;
-        return;
-      }
-      var offeredAgent=agents[offerIdx];
-      // Build clean copy of offered agent (strip _ fields) for sender
-      var cleanOffer={};
-      Object.keys(offeredAgent).forEach(function(k){if(k.charAt(0)!=='_'&&k!=='pinned')cleanOffer[k]=offeredAgent[k]});
-      // Add received agent — clean, fully editable, no clone flags
-      ag.xp=ag.xp||0;ag.level=getLevelFromXP(ag.xp);ag.state='idle';ag.task='';ag.output='';
-      ag.id='agent_'+String(nxId).padStart(2,'0');nxId++;
-      agents.push(ag);
-      // Remove offered agent from roster
-      agents.splice(offerIdx,1);
-      save();
-      // Insert row for original sender to collect their received agent
-      var fromUserId=res.data.from_user;
-      await sb.from('shared_agents').insert({from_user:sbUser.id,to_user:fromUserId,agent_data:JSON.stringify(cleanOffer),type:'trade',status:'accepted'});
-      await sb.from('shared_agents').delete().eq('id',id);
-      alert('Trade complete! '+ag.name+' has joined your roster. '+offeredAgent.name+' has been sent to your trade partner.');
     } else if(res.data.type==='lend'){
       // Borrowed: preserve lock + timer
       ag._isBorrowed=true;
@@ -3530,70 +3547,61 @@ async function cmDeclineRequest(id){
   }catch(e){alert('Error declining');if(btn)btn.disabled=false}
 }
 
-async function cmCollectTrade(id){
+async function cmSendCounterOffer(id){
   if(!sb||!sbUser)return;
   var btn=event&&event.target;if(btn)btn.disabled=true;
+  var offerSel=document.getElementById('cm-trade-offer-'+id);
+  var offerIdx=offerSel?parseInt(offerSel.value):-1;
+  if(isNaN(offerIdx)||offerIdx<0||!agents[offerIdx]){
+    alert('Select an agent to offer.');
+    if(btn)btn.disabled=false;
+    return;
+  }
   try{
-    var res=await sb.from('shared_agents').select('*').eq('id',id).single();
-    if(!res.data){alert('Could not find trade record.');if(btn)btn.disabled=false;return}
-    // Guard: only collect rows that are still collectable (row deleted on collect, so second call hits !res.data)
-    if(res.data.status!=='accepted'&&res.data.status!=='returned'){
-      var card=document.getElementById('cm-card-'+id);if(card)card.remove();
-      cmUpdateNotifBadge();
-      return;
-    }
-    // Delete row FIRST — prevents double-collection on refresh (second call will get !res.data)
-    var upd=await sb.from('shared_agents').delete().eq('id',id);
-    if(upd.error)throw upd.error;
-    var ag=JSON.parse(res.data.agent_data);
-    // Assign random look if needed
-    if(!ag.body||!ag.topColor){
-      ag.body=pick(BODIES);ag.gender=ag.gender||pick(GENDERS);ag.skin=pick(SKINS);
-      ag.hair=pick(HAIRSTYLES);ag.hairColor=pick(COLORS);ag.top=pick(TOPS);ag.bottom=pick(BOTTOMS);
-      ag.topColor=pick(COLORS);ag.bottomColor=pick(COLORS);ag.hat=pick(HATS);ag.hatColor=pick(COLORS);
-      ag.accessory=pick(ACCS);ag.accColor=pick(COLORS);ag.prop=pick(PROPS);
-    }
-    // Clean agent — fully owned, no lock flags
-    ag.id='agent_'+String(nxId).padStart(2,'0');
-    ag.xp=ag.xp||0;ag.level=getLevelFromXP(ag.xp);ag.state='idle';ag.task='';ag.output='';
-    ag.personality=ag.personality||pick(PERSONALITIES);
-    delete ag._isClone;delete ag._cloneTasksDone;delete ag._cloneFrom;
-    delete ag._isBorrowed;delete ag._isLent;delete ag._lentBy;
-    agents.push(ag);nxId++;save();
-    // Remove card from DOM immediately — no flicker on re-render
-    var card=document.getElementById('cm-card-'+id);if(card)card.remove();
-    alert(ag.name+' has joined your roster!');
+    var rec=await sb.from('shared_agents').select('*').eq('id',id).single();
+    if(!rec.data){alert('Trade record not found.');if(btn)btn.disabled=false;return}
+    var senderAgent=JSON.parse(rec.data.agent_data);
+    var myAgent=agents[offerIdx];
+    var cleanOffer={};
+    Object.keys(myAgent).forEach(function(k){if(k.charAt(0)!=='_'&&k!=='pinned')cleanOffer[k]=myAgent[k]});
+    var both={sender:senderAgent,offer:cleanOffer};
+    await sb.from('shared_agents').update({status:'offered',agent_data:JSON.stringify(both)}).eq('id',id);
     cmUpdateNotifBadge();
-    cmLoadPendingTrades();
-  }catch(e){alert('Error collecting agent: '+(e.message||'Unknown error'));if(btn)btn.disabled=false}
+    var cardEl=document.getElementById('cm-card-'+id);
+    if(cardEl){cardEl.innerHTML='<div style="text-align:center;padding:16px;font-size:10px;color:var(--green)">OFFER SENT</div>'}
+    setTimeout(function(){renderCommunity(document.getElementById('cb'))},2500);
+  }catch(e){alert('Error sending counter-offer: '+(e.message||'Unknown error'));if(btn)btn.disabled=false}
 }
 
-async function cmDeclineTrade(id){
+async function cmAcceptTrade(id){
   if(!sb||!sbUser)return;
   var btn=event&&event.target;if(btn)btn.disabled=true;
   try{
-    var res=await sb.from('shared_agents').select('*').eq('id',id).single();
-    if(!res.data){alert('Trade record not found.');if(btn)btn.disabled=false;return}
-    if(res.data.status!=='accepted'){
-      alert('This trade has already been processed.');
-      var card=document.getElementById('cm-card-'+id);if(card)card.remove();
-      return;
-    }
-    // Mark this row as declined
-    await sb.from('shared_agents').update({status:'declined'}).eq('id',id);
-    // Return the offered agent back to the original acceptor (from_user of this row)
-    await sb.from('shared_agents').insert({
-      from_user:sbUser.id,
-      to_user:res.data.from_user,
-      agent_data:res.data.agent_data,
-      type:'trade',
-      status:'returned'
-    });
-    // Remove card immediately
-    var card=document.getElementById('cm-card-'+id);if(card)card.remove();
-    alert('Trade declined \u2014 agents returned to original owners.');
+    var rec=await sb.from('shared_agents').select('*').eq('id',id).single();
+    if(!rec.data){alert('Trade record not found.');if(btn)btn.disabled=false;return}
+    var both=JSON.parse(rec.data.agent_data);
+    var myOriginalAgent=both.sender; // what I originally offered (from_user = me)
+    var theirAgent=both.offer;       // what they counter-offered (to_user's agent)
+    // Add their agent to my roster (clean, fully owned)
+    theirAgent.xp=theirAgent.xp||0;
+    theirAgent.level=getLevelFromXP(theirAgent.xp);
+    theirAgent.state='idle';theirAgent.task='';theirAgent.output='';
+    theirAgent.id='agent_'+String(nxId).padStart(2,'0');nxId++;
+    delete theirAgent._isClone;delete theirAgent._cloneTasksDone;delete theirAgent._cloneFrom;
+    delete theirAgent._isBorrowed;delete theirAgent._isLent;delete theirAgent._lentBy;
+    agents.push(theirAgent);
+    // Remove my original agent from roster by name match
+    var rmIdx=-1;
+    agents.forEach(function(a,i){if(a.name===myOriginalAgent.name&&rmIdx<0)rmIdx=i;});
+    if(rmIdx>=0)agents.splice(rmIdx,1);
+    save();
+    // Mark completed — the other side (to_user) will detect and process their swap via cmUpdateNotifBadge
+    await sb.from('shared_agents').update({status:'completed'}).eq('id',id);
     cmUpdateNotifBadge();
-  }catch(e){alert('Error declining trade: '+(e.message||'Unknown error'));if(btn)btn.disabled=false}
+    var cardEl=document.getElementById('cm-card-'+id);
+    if(cardEl){cardEl.innerHTML='<div style="text-align:center;padding:16px;font-size:10px;color:var(--green)">ACCEPTED</div>'}
+    setTimeout(function(){renderCommunity(document.getElementById('cb'))},2500);
+  }catch(e){alert('Error accepting trade: '+(e.message||'Unknown error'));if(btn)btn.disabled=false}
 }
 
 async function cmPublishSkill(idx){
