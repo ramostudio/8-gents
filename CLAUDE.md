@@ -162,10 +162,45 @@ Total to crown: 2,485 XP. Level is always derived from XP via `getLevelFromXP()`
 ### Deploy system
 - API-agnostic: Claude, ChatGPT, Gemini, Custom (OpenAI-compatible)
 - Keys stored in localStorage per provider (`8g_api_key_claude`, etc.)
-- System prompt auto-generated from agent name, role, personality behavior, skills, and lineage
+- Enhanced system prompt auto-generated from: agent name, role, level, personality behavior (PERSONALITY_PROMPTS), lineage (_parents), and SKILL_RICH descriptions for each skill
+- Deploy to Platform buttons: Open in Claude/ChatGPT/Perplexity/Grok + Copy Prompt (no API key needed)
 - Chat interface with message history
 - Stats tracking: messages sent, responses, tasks done
-- On response: increments clone task counter if clone, triggers auto-return if borrowed
+- On response: increments clone task counter if clone, triggers auto-return if borrowed, awards +1 XP
+
+### Friends system
+- Mutual friends: adding A→B also creates B→A
+- Self-friend prevention
+- Friend chat: inline chat box in Friends tab, 5-second auto-refresh, unread count badges
+- Quick-action buttons per friend: TRADE, LEND, SHARE, CHAT, REMOVE
+- Supabase tables: friends, friend_messages
+
+### Shareable agent cards
+- SHARE LINK button in agent modal generates 8-char share code
+- Public URL: https://8-gents.vercel.app/?card=CODE
+- Public viewer shows: large sprite, name, role, level, personality, body type, skills, creator username, view count
+- On load, checks URL for ?card= parameter and shows viewer modal
+- Agent data stored in public_cards table (stripped of _ fields)
+
+### Lineage / Dynasty tab
+- Dedicated LINEAGE tab in side menu (between Marriage and Growth)
+- Top section: scrollable row of all agents with mini sprites and Gen labels
+- Bottom section: dynasty tree for selected agent
+- Shows grandparents → parents → selected agent → children
+- Missing ancestors shown as "?" placeholder cards
+- Generation calculated by walking _parents chain (no _parents = Gen 0)
+
+### Notification system
+- Red badge on COMMUNITY menu item showing total pending count
+- Queries shared_agents (pending) + friend_messages (unread)
+- Updates on login, every 30 seconds, and after accept/decline/collect actions
+- Badge clears on logout
+
+### Info tab
+- HOW TO PLAY: full game manual
+- PRIVACY (PDPA): API key locality, Supabase security, data deletion, contact
+- ABOUT: creator, version, tagline
+- CHANGELOG: version history
 
 ### Auth + Community (Supabase)
 - Email + password authentication (email confirmation OFF for dev)
@@ -184,7 +219,10 @@ Total to crown: 2,485 XP. Level is always derived from XP via `getLevelFromXP()`
 - `agents`: id, user_id, agent_data (JSONB), updated_at
 - `shared_agents`: id, from_user, to_user, agent_data (JSONB), from_agent_idx, type (share/trade/lend), status (pending/active/accepted/declined/returned), created_at
 - `community_skills`: id, user_id, username, skill_data (JSONB), downloads, created_at
-- RLS policies on all tables — users can only access their own data
+- `friends`: id, user_id, friend_id, friend_username, created_at, UNIQUE(user_id, friend_id)
+- `public_cards`: id, user_id, username, share_code (unique), agent_data (JSONB), views, created_at
+- `friend_messages`: id, from_user, to_user, message, read (boolean), created_at
+- RLS policies on all 7 tables — users can only access their own data (public_cards and profiles readable by everyone)
 - Trigger: `handle_new_user()` auto-creates profile on signup (with EXCEPTION handler for resilience)
 
 ## Coding conventions
@@ -244,7 +282,8 @@ Fields prefixed with `_` (e.g., `_parents`, `_hasMutation`, `_isClone`, `_isBorr
 - [x] 12 body types with full sprite rendering
 - [x] SVG pixel sprites (16x24 grid, chibi proportions)
 - [x] Agent cards with modal detail view + lock state for clones/borrowed
-- [x] Agent card badges: CLONE, ON LOAN, BORROWED, LOCKED
+- [x] Agent card badges: CLONE (top-left purple), ON LOAN (top-left gold), BORROWED (top-left cyan), LOCKED (bottom-right red)
+- [x] Hard lock enforcement: mUpd, editLook, delModal, mRmSk, mRefreshSk all check lock state
 - [x] Pin, sort (8 options incl. clone/lent/borrowed), search, import/export
 - [x] 185 skills (140 visible + 45 hidden), 16 categories
 - [x] Merged Library with rich descriptions + teach-from-expanded-card
@@ -255,35 +294,48 @@ Fields prefixed with `_` (e.g., `_parents`, `_hasMutation`, `_isClone`, `_isBorr
 - [x] Marriage Chamber (Natural + Gene Splice modes)
 - [x] 3x re-roll limit, personality inheritance, mutation system
 - [x] Progressive XP curve (10/25/50/100/150/250/400/600/900)
-- [x] Growth dashboard with live XP ticking
+- [x] Growth dashboard with live XP ticking + "?" XP guide collapsible
 - [x] Offline catch-up (8hr cap)
 - [x] Done bonus with 5-min working guard + mutation reveal
-- [x] Deploy tab (4 providers, chat interface, system prompt generator)
+- [x] Deploy tab (4 providers, chat interface, enhanced system prompt with SKILL_RICH descriptions)
+- [x] Deploy to platform buttons: Open in Claude, ChatGPT, Perplexity, Grok + Copy Prompt
 - [x] Clone task counter in deploy (increments on response, unlocks at 3)
 - [x] Borrowed auto-return on deploy task completion
 - [x] Personality behavior system (8 types with rich prompts)
 - [x] Personality lock on born agents
 - [x] Edit Look bug fixed (loads agent data into Create form correctly)
 - [x] Auth system (email login/signup) — CONNECTED to Supabase
-- [x] Cloud sync via Supabase
-- [x] Community: Clone (locked 3 tasks), Trade, Lend (24hr timer + auto-return + 10 XP reward), Skill Market, Friends (coming soon), Profile
+- [x] Full logout cleanup (clears agents, localStorage, resets state before new login)
+- [x] Cloud sync via Supabase (syncToCloud on save, syncFromCloud on login)
+- [x] Community: Clone (locked 3 tasks), Trade (swap with preview + collect/decline), Lend (24hr timer + auto-return + 10 XP reward), Skill Market, Friends (mutual + chat), Profile
+- [x] Global pending requests banner (visible on all community sub-tabs)
+- [x] In-app notifications (red badge on COMMUNITY menu for pending requests + unread messages)
+- [x] Friend chat (inline chat box, 5s auto-refresh, unread count badges)
+- [x] Mutual friends (adding A→B also creates B→A)
+- [x] Self-friend prevention
+- [x] Trade preview cards (side-by-side comparison, YOUR OFFER dropdown, duplicate warning)
+- [x] Shareable agent card URLs (?card=CODE, public viewer with sprite + stats + view count)
+- [x] Lineage tab (dynasty tree: grandparents → parents → agent → children, generation labels)
+- [x] Info tab (How to Play, Privacy/PDPA, About, Changelog)
 - [x] Lend/borrow expiry auto-checked every 10 seconds in growth tick
 - [x] Enhanced import with preview + select (Agents tab + Deploy tab)
 - [x] Safety notice on API keys
 - [x] Export sanitization (strips internal fields)
-- [x] Supabase SQL schema with RLS policies — DEPLOYED
+- [x] XSS protection: esc() escapes &, ', ", < on all user input
+- [x] Double-click protection on async community buttons
+- [x] Supabase SQL schema with RLS policies — 7 tables DEPLOYED
+- [x] Vercel deployment: 8-gents.vercel.app (auto-deploys from GitHub main)
 - [x] Setup guide for deployment
 
 ## What's NOT built yet
 
-- [ ] Vercel deployment
-- [ ] Friends list (community tab — coming soon placeholder exists)
-- [ ] Privacy policy page
-- [ ] Real-time notifications for trade/share/lend requests
-- [ ] Family tree / lineage viewer
-- [ ] Shareable agent card URLs (viral hook)
+- [ ] Mobile responsive design
+- [ ] Real-time notifications (currently polling every 30s)
 - [ ] Lend return notification to lender (currently silent)
-- [ ] VS Code extension (Phase 2)
+- [ ] Favicon
+- [ ] Domain (8gents.com)
+- [ ] Encrypted API key storage via Supabase (Option D, post-auth)
+- [ ] VS Code extension / Claude Code agent integration (Phase 2)
 
 ## Design principles
 
@@ -303,8 +355,8 @@ Fields prefixed with `_` (e.g., `_parents`, `_hasMutation`, `_isClone`, `_isBorr
 ### Setup
 ```bash
 # Clone the repo
-git clone https://github.com/daraproud/8gents.git
-cd 8gents
+git clone https://github.com/ramostudio/8-gents.git
+cd 8-gents
 
 # Serve locally (required for Supabase — can't use file:// protocol)
 python3 -m http.server 8080
@@ -321,9 +373,14 @@ open http://localhost:8080/index.html
 
 ### Supabase (already configured)
 - Project URL: `https://iscyzixingifdlcnqyxf.supabase.co`
-- Tables: profiles, agents, shared_agents, community_skills
+- Tables: profiles, agents, shared_agents, community_skills, friends, public_cards, friend_messages
 - Auth: Email provider, confirmation OFF for dev
 - Trigger: handle_new_user() with EXCEPTION handler
+
+### Vercel (auto-deploy)
+- URL: `https://8-gents.vercel.app`
+- Connected to GitHub `ramostudio/8-gents` main branch
+- Auto-deploys on every push to main
 
 ## Important reminders
 
