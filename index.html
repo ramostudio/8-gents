@@ -3030,7 +3030,8 @@ async function cmUpdateNotifBadge(){
     var r1=await sb.from('shared_agents').select('id',{count:'exact',head:true}).eq('to_user',sbUser.id).eq('status','pending');
     var r2=await sb.from('friend_messages').select('id',{count:'exact',head:true}).eq('to_user',sbUser.id).eq('read',false);
     var r3=await sb.from('shared_agents').select('id',{count:'exact',head:true}).eq('from_user',sbUser.id).eq('type','trade').eq('status','offered');
-    var total=(r1.count||0)+(r2.count||0)+(r3.count||0);
+    var r4=await sb.from('shared_agents').select('id',{count:'exact',head:true}).eq('to_user',sbUser.id).in('status',['notify_declined','notify_expired']);
+    var total=(r1.count||0)+(r2.count||0)+(r3.count||0)+(r4.count||0);
     if(total>0){badge.textContent=total;badge.style.display='inline-block';}
     else{badge.style.display='none';}
     // Process completed trades: receiver (to_user=me) side of the swap
@@ -3084,13 +3085,29 @@ async function cmUpdateNotifBadge(){
         }
       }
     }catch(e){}
-    // 24hr auto-decline for expired trade records
+    // 24hr auto-decline for expired trade records (with expiry notifications)
     try{
       var cutoff=new Date(Date.now()-24*60*60*1000).toISOString();
-      // Expire pending trades sent TO me that I haven't responded to
-      await sb.from('shared_agents').update({status:'declined'}).eq('to_user',sbUser.id).eq('type','trade').eq('status','pending').lt('created_at',cutoff);
-      // Expire offered trades FROM me that I haven't accepted/declined
-      await sb.from('shared_agents').update({status:'declined'}).eq('from_user',sbUser.id).eq('type','trade').eq('status','offered').lt('created_at',cutoff);
+      // Find expired pending trades TO me
+      var expPending=await sb.from('shared_agents').select('id,from_user,to_user').eq('to_user',sbUser.id).eq('type','trade').eq('status','pending').lt('created_at',cutoff);
+      if(expPending.data){
+        for(var ep=0;ep<expPending.data.length;ep++){
+          var epr=expPending.data[ep];
+          await sb.from('shared_agents').update({status:'declined'}).eq('id',epr.id);
+          await sb.from('shared_agents').insert({from_user:epr.from_user,to_user:epr.from_user,agent_data:JSON.stringify({message:'Trade expired — auto-declined after 24 hours.'}),type:'trade',status:'notify_expired'});
+          await sb.from('shared_agents').insert({from_user:epr.to_user,to_user:epr.to_user,agent_data:JSON.stringify({message:'Trade expired — auto-declined after 24 hours.'}),type:'trade',status:'notify_expired'});
+        }
+      }
+      // Find expired offered trades FROM me
+      var expOffered=await sb.from('shared_agents').select('id,from_user,to_user').eq('from_user',sbUser.id).eq('type','trade').eq('status','offered').lt('created_at',cutoff);
+      if(expOffered.data){
+        for(var eo=0;eo<expOffered.data.length;eo++){
+          var eor=expOffered.data[eo];
+          await sb.from('shared_agents').update({status:'declined'}).eq('id',eor.id);
+          await sb.from('shared_agents').insert({from_user:eor.from_user,to_user:eor.from_user,agent_data:JSON.stringify({message:'Trade expired — auto-declined after 24 hours.'}),type:'trade',status:'notify_expired'});
+          await sb.from('shared_agents').insert({from_user:eor.to_user,to_user:eor.to_user,agent_data:JSON.stringify({message:'Trade expired — auto-declined after 24 hours.'}),type:'trade',status:'notify_expired'});
+        }
+      }
     }catch(e){}
   }catch(e){}
 }
@@ -3480,6 +3497,21 @@ async function cmLoadPendingTrades(){
       h+='</div>';
     });
     el.innerHTML=h;
+    // Show decline/expiry notifications
+    try{
+      var notifs=await sb.from('shared_agents').select('id,agent_data,status').eq('to_user',sbUser.id).in('status',['notify_declined','notify_expired']);
+      if(notifs.data&&notifs.data.length){
+        notifs.data.forEach(function(n){
+          var msg=JSON.parse(n.agent_data).message||'Trade notification';
+          var color=n.status==='notify_expired'?'var(--orange)':'var(--red)';
+          h+='<div class="cm-trade-pending" style="border-color:'+color+'">';
+          h+='<div style="font-size:9px;color:'+color+';margin-bottom:8px">'+esc(msg)+'</div>';
+          h+='<button class="cm-btn" onclick="cmDismissNotif(\''+n.id+'\')" style="color:var(--text);border-color:var(--border)">OK</button>';
+          h+='</div>';
+        });
+        el.innerHTML=h;
+      }
+    }catch(e){}
     try{
       await sb.from('shared_agents').delete().eq('to_user',sbUser.id).in('status',['declined','completed']);
       await sb.from('shared_agents').delete().eq('from_user',sbUser.id).in('status',['declined','completed']);
@@ -3537,6 +3569,17 @@ async function cmDeclineRequest(id){
     var rec=await sb.from('shared_agents').select('*').eq('id',id).single();
     if(!rec.data){if(btn)btn.disabled=false;return}
     await sb.from('shared_agents').update({status:'declined'}).eq('id',id);
+    if(rec.data.type==='trade'){
+      var myName=sbUser.user_metadata&&sbUser.user_metadata.username||'unknown';
+      var otherUser=rec.data.from_user===sbUser.id?rec.data.to_user:rec.data.from_user;
+      await sb.from('shared_agents').insert({
+        from_user:sbUser.id,
+        to_user:otherUser,
+        agent_data:JSON.stringify({message:myName+' declined your trade request.'}),
+        type:'trade',
+        status:'notify_declined'
+      });
+    }
     // If this was a lend and we are the lender, unlock our agent locally
     if(rec.data.type==='lend'){
       agents.forEach(function(a){
@@ -3553,6 +3596,15 @@ async function cmDeclineRequest(id){
     if(cardEl){cardEl.innerHTML='<div style="text-align:center;padding:16px;font-size:10px;color:var(--red)">DECLINED</div>'}
     setTimeout(function(){renderCommunity(document.getElementById('cb'))},2500);
   }catch(e){alert('Error declining');if(btn)btn.disabled=false}
+}
+
+async function cmDismissNotif(id){
+  if(!sb||!sbUser)return;
+  try{
+    await sb.from('shared_agents').delete().eq('id',id);
+    renderCommunity(document.getElementById('cb'));
+    cmUpdateNotifBadge();
+  }catch(e){}
 }
 
 async function cmSendCounterOffer(id){
