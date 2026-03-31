@@ -1181,12 +1181,22 @@ function genChildName(p1,p2){
   var sk1=(p1.skills||[]),sk2=(p2.skills||[]);
   var all=sk1.concat(sk2);
   if(all.length>=2){
-    var w1=all[Math.floor(Math.random()*all.length)].split(' ')[0];
-    var w2=all[Math.floor(Math.random()*all.length)].split(' ');
-    w2=w2[w2.length-1];
-    w1=w1.charAt(0).toUpperCase()+w1.slice(1,4);
-    w2=w2.charAt(0).toUpperCase()+w2.slice(1,4);
-    return w1+w2;
+    var BAD_STARTS=['anal','anus','ass','damn','crap','hell','porn','sex','shit','fuk','fuc','dic','coc','nig','fag','cum','tit','pus'];
+    var attempts=0;
+    while(attempts<10){
+      var w1=all[Math.floor(Math.random()*all.length)].split(' ')[0];
+      var w2=all[Math.floor(Math.random()*all.length)].split(' ');
+      w2=w2[w2.length-1];
+      w1=w1.charAt(0).toUpperCase()+w1.slice(1,4);
+      w2=w2.charAt(0).toUpperCase()+w2.slice(1,4);
+      var name=w1+w2;
+      var lower=name.toLowerCase();
+      var bad=false;
+      for(var bi=0;bi<BAD_STARTS.length;bi++){if(lower.indexOf(BAD_STARTS[bi])>=0){bad=true;break}}
+      if(!bad)return name;
+      attempts++;
+    }
+    return pick(NAME_PARTS_PRE)+pick(NAME_PARTS_SUF);
   }
   return pick(NAME_PARTS_PRE)+pick(NAME_PARTS_SUF);
 }
