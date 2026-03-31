@@ -1974,14 +1974,19 @@ function renderSkTree(h,c){
   h+='<div style="margin-bottom:10px"><div style="font-size:8px;color:var(--gold2);margin-bottom:4px">SELECT AGENT</div>';
   h+='<div style="display:flex;gap:4px;flex-wrap:wrap">';
   agents.forEach(function(a,i){
-    h+='<button class="sk-tab'+(skLearnAgent===i?' ac':'')+'" onclick="skLearnAgent='+i+';renderSkills(document.getElementById(\'cb\'))">'+esc(a.name)+'</button>';
+    if(a._isLent||a._isBorrowed||a._pendingTrade){
+      h+='<button class="sk-tab" disabled style="opacity:0.3;cursor:not-allowed">'+esc(a.name)+'</button>';
+    } else {
+      h+='<button class="sk-tab'+(skLearnAgent===i?' ac':'')+'" onclick="skLearnAgent='+i+';renderSkills(document.getElementById(\'cb\'))">'+esc(a.name)+'</button>';
+    }
   });
   h+='</div></div>';
   if(skLearnAgent<0){c.innerHTML=h+'<div style="color:var(--text3);font-size:9px;padding:10px">Select an agent above.</div>';return}
   var ag=agents[skLearnAgent];
+  var agBlocked=ag._isLent||ag._isBorrowed||ag._pendingTrade;
   var agSkills=ag.skills||[];
   h+='<div style="font-size:9px;color:var(--gold);margin-bottom:6px">'+esc(ag.name)+' \u2014 SKILL PROGRESSION</div>';
-  h+='<div style="font-size:7px;color:var(--text3);margin-bottom:12px;line-height:1.8">Click a locked skill to learn it. Skills further along a path require earlier skills first.</div>';
+  h+='<div style="font-size:7px;color:var(--text3);margin-bottom:12px;line-height:1.8">'+(agBlocked?'This agent is locked and cannot learn skills right now.':'Click a locked skill to learn it. Skills further along a path require earlier skills first.')+'</div>';
   var trees={
     research:[['web search','fact checking','deep research','academic research'],['summarisation','data mining','literature review']],
     writing:[['copywriting','editing','technical writing'],['storytelling','creative writing','scriptwriting'],['blog writing','SEO writing','press release']],
@@ -2007,10 +2012,10 @@ function renderSkTree(h,c){
         var cost=info?info.cost:20;
         if(owns){
           h+='<div class="sk-tree-node unlocked">'+sk+'</div>';
-        } else if(canLearn){
+        } else if(canLearn&&!agBlocked){
           h+='<div class="sk-tree-node locked" style="cursor:pointer;border-color:var(--gold);color:var(--gold)" onclick="event.stopPropagation();buySkill(\''+esc(sk).replace(/'/g,"\\'")+'\','+cost+')" title="Click to learn ('+cost+' XP)">'+sk+' <span style="font-size:6px;color:var(--cyan)">+</span></div>';
         } else {
-          h+='<div class="sk-tree-node locked" title="Learn '+path[idx-1]+' first">'+sk+'</div>';
+          h+='<div class="sk-tree-node locked" title="'+(canLearn&&agBlocked?'Agent is locked':'Learn '+path[idx-1]+' first')+'">'+sk+'</div>';
         }
         if(idx<path.length-1)h+='<span class="sk-tree-arrow">\u25b8</span>';
       });
