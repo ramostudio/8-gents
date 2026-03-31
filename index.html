@@ -2697,6 +2697,7 @@ function dpDoPasteImport(){
   }catch(err){alert('Invalid JSON format')}
 }
 function dpSelectAgent(i){
+  if(agents[i]._isLent){alert('This agent is on loan. Wait for it to return before deploying.');return}
   // Set previous primary agent to done when switching
   if(dpAgent>=0&&agents[dpAgent]&&dpAgent!==i){
     var prev=agents[dpAgent];
@@ -3477,7 +3478,20 @@ async function cmDeclineRequest(id){
   if(!sb||!sbUser)return;
   var btn=event&&event.target;if(btn)btn.disabled=true;
   try{
+    // Fetch the record first so we know the type
+    var rec=await sb.from('shared_agents').select('*').eq('id',id).single();
+    if(!rec.data){if(btn)btn.disabled=false;return}
     await sb.from('shared_agents').update({status:'declined'}).eq('id',id);
+    // If this was a lend and we are the lender, unlock our agent locally
+    if(rec.data.type==='lend'){
+      agents.forEach(function(a){
+        if(a._isLent&&rec.data.from_user===sbUser.id){
+          a._isLent=false;delete a._lentTo;delete a._lentExpiry;
+          awardXP(a,10);
+        }
+      });
+      save();
+    }
     alert('Request declined.');
     cmUpdateNotifBadge();
     renderCommunity(document.getElementById('cb'));
