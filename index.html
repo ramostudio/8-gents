@@ -3605,9 +3605,9 @@ async function cmDismissNotif(id){
   var btn=event&&event.target;
   if(btn){var card=btn.closest('.cm-trade-pending');if(card)card.style.display='none';}
   try{
-    await sb.from('shared_agents').delete().eq('id',parseInt(id));
+    await sb.from('shared_agents').delete().eq('to_user',sbUser.id).in('status',['notify_declined','notify_expired']);
   }catch(e){}
-  cmUpdateNotifBadge();
+  await cmUpdateNotifBadge();
   renderCommunity(document.getElementById('cb'));
 }
 
