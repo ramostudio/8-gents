@@ -2992,13 +2992,11 @@ async function syncFromCloud(){
     var res=await sb.from('agents').select('agent_data').eq('user_id',sbUser.id).single();
     if(res.data&&res.data.agent_data){
       var cloudAgents=JSON.parse(res.data.agent_data);
-      if(cloudAgents.length>0&&cloudAgents.length>=agents.length){
-        if(confirm('Found '+cloudAgents.length+' agents in the cloud (you have '+agents.length+' locally). Load from cloud?')){
-          agents=cloudAgents;
-          nxId=Math.max.apply(null,agents.map(function(a){return parseInt((a.id||'agent_00').split('_')[1])}).concat([0]))+1;
-          save();
-          renderTab();
-        }
+      if(cloudAgents.length>0){
+        agents=cloudAgents;
+        nxId=Math.max.apply(null,agents.map(function(a){return parseInt((a.id||'agent_00').split('_')[1])}).concat([0]))+1;
+        save();
+        renderTab();
       }
     }
   }catch(e){console.log('Cloud load:',e)}
