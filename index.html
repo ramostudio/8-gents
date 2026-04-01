@@ -3462,6 +3462,7 @@ async function cmProposeTrade(idx){
       status:'pending'
     });
     agents[idx]._pendingTrade=true;save();
+    if(curTab==='agents')renderTab();
     alert('Trade offer sent to '+target.value.trim()+'! They need to accept and offer an agent back.');
   }catch(e){alert('Error: '+(e.message||'Could not propose trade'))}
   if(btn)btn.disabled=false;
