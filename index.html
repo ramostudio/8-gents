@@ -2502,7 +2502,7 @@ function dpSelectCollab(i){
   if(agents[i]._isBorrowed){alert('Borrowed agents cannot be used as collab partners.');return;}
   if(dpAgent2>=0&&agents[dpAgent2]){
     var old2=agents[dpAgent2];
-    if(old2.state==='collab'){old2.state='idle';}
+    if(old2.state==='collab'){old2.state='done';old2._doneClaimed=false;}
   }
   dpAgent2=i;
   dpShowCollab=false;
