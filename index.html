@@ -2843,14 +2843,9 @@ async function dpSend(){
   dpMessages.push({role:'user',content:msg});
   dpStats.sent++;
 
-  // Set agent(s) to working/collab
-  if(dpAgent2>=0&&agents[dpAgent2]){
-    a.state='collab';if(!a._workStart)a._workStart=Date.now();
-    agents[dpAgent2].state='collab';if(!agents[dpAgent2]._workStart)agents[dpAgent2]._workStart=Date.now();
-  } else {
-    a.state='working';
-    if(!a._workStart)a._workStart=Date.now();
-  }
+  // Ensure _workStart is set (safety net only — state already set by dpSelectAgent/dpSelectCollab)
+  if(!a._workStart)a._workStart=Date.now();
+  if(dpAgent2>=0&&agents[dpAgent2]&&!agents[dpAgent2]._workStart)agents[dpAgent2]._workStart=Date.now();
   save();
 
   // Show loading
