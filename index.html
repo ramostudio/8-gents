@@ -416,7 +416,7 @@ var PERSONALITY_PROMPTS={
   curious:'You ask deep questions and explore rabbit holes. You seek to understand the why behind everything, make connections across domains, and surface non-obvious insights. You are enthusiastic about learning and sharing discoveries.',
   stoic:'You focus on what can be controlled and let go of what cannot. You provide rational, emotion-free analysis. You strip problems to their essence, avoid drama, and deliver practical wisdom with minimal words.'
 };
-var STATES={idle:{l:'IDLE',c:'st-idle'},working:{l:'WORKING',c:'st-working'},collab:{l:'COLLAB',c:'st-collab'},stuck:{l:'STUCK',c:'st-stuck'},waiting:{l:'WAITING',c:'st-waiting'},done:{l:'DONE',c:'st-done'}};
+var STATES={idle:{l:'IDLE',c:'st-idle'},working:{l:'WORKING',c:'st-working'},collab:{l:'COLLAB',c:'st-collab'},done:{l:'DONE',c:'st-done'}};
 var RNAMES=['Nova','Byte','Echo','Flux','Sage','Rune','Volt','Iris','Onyx','Coda','Hex','Zara','Pike','Lynx','Juno','Neon','Dash','Fern','Opal','Rex'];
 var RROLES=['Researcher','Writer','Debugger','Analyst','Designer','Strategist','Reviewer','Builder','Planner','Curator'];
 var agents=[],nxId=1,curTab='agents',custPixels=null,editId=null,modalIdx=-1;
@@ -2384,8 +2384,6 @@ function renderGrowth(c){
     idle:{dot:'var(--gold2)',label:'IDLE',col:'var(--gold2)'},
     working:{dot:'var(--cyan)',label:'WORKING',col:'var(--cyan)'},
     collab:{dot:'var(--purple)',label:'COLLAB',col:'var(--purple)'},
-    stuck:{dot:'var(--red)',label:'STUCK',col:'var(--red)'},
-    waiting:{dot:'var(--orange)',label:'WAITING',col:'var(--orange)'},
     done:{dot:'var(--green)',label:'DONE',col:'var(--green)'}
   };
 
@@ -2694,6 +2692,7 @@ function renderDeploy(c){
     h+='<div class="dp-chat-input">';
     h+='<input id="dp-input" placeholder="Talk to '+esc(a.name)+'..." onkeydown="if(event.key===\'Enter\')dpSend()">';
     h+='<button class="dp-send" id="dp-send-btn" onclick="dpSend()">\u25b6</button>';
+    h+='<button class="dp-send" onclick="dpEndSession()" style="background:var(--red);color:#000;margin-left:4px">DONE</button>';
     h+='</div></div>';
 
     // Stats
@@ -2805,6 +2804,21 @@ function dpLaunchPlatform(platform){
       prompt('Copy this prompt:',text);
     }
   }
+}
+
+function dpEndSession(){
+  if(dpAgent<0)return;
+  var a=agents[dpAgent];
+  a.state='done';
+  a._doneClaimed=false;
+  delete a._workStart;
+  if(dpAgent2>=0&&agents[dpAgent2]){
+    agents[dpAgent2].state='done';
+    agents[dpAgent2]._doneClaimed=false;
+    delete agents[dpAgent2]._workStart;
+  }
+  save();
+  renderTab();
 }
 
 async function dpSend(){
