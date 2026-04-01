@@ -28,7 +28,10 @@ body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospa
 #ch .t{font-size:11px;color:var(--gold)}
 #ch .s{font-size:8px;color:var(--text2)}
 #cb{flex:1;overflow-y:auto;padding:12px}
-#cb::-webkit-scrollbar{width:6px}
+*::-webkit-scrollbar{width:5px}
+*::-webkit-scrollbar-track{background:var(--bg)}
+*::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+#cb::-webkit-scrollbar{width:5px}
 #cb::-webkit-scrollbar-track{background:var(--bg)}
 #cb::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
@@ -52,12 +55,6 @@ body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospa
 .ag-toolbar input:focus{border-color:var(--gold)}
 .ag-toolbar input::placeholder{color:var(--text3)}
 .ag-toolbar select{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Press Start 2P',monospace;font-size:8px;padding:5px;outline:none;cursor:pointer}
-.ag-tbtn{padding:4px 8px;font-size:8px;font-family:'Press Start 2P',monospace;cursor:pointer;border-radius:2px;border:1px solid var(--border);background:var(--bg);color:var(--text2);transition:all .15s;white-space:nowrap}
-.ag-tbtn:hover{border-color:var(--gold2);color:var(--text)}
-.ag-tbtn.imp{color:var(--cyan);border-color:rgba(0,255,204,0.3)}
-.ag-tbtn.imp:hover{background:var(--cyan2);border-color:var(--cyan)}
-.ag-tbtn.exp{color:var(--orange);border-color:rgba(230,126,34,0.3)}
-.ag-tbtn.exp:hover{background:rgba(230,126,34,0.1);border-color:var(--orange)}
 .ag-pin{position:absolute;top:4px;right:4px;font-size:10px;color:var(--text3);cursor:pointer;z-index:2;background:none;border:none;font-family:'Press Start 2P',monospace;padding:2px}
 .ag-pin:hover{color:var(--gold)}
 .ag-pin.pinned{color:var(--gold);text-shadow:0 0 4px rgba(255,204,68,0.4)}
@@ -88,7 +85,7 @@ body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospa
 .sk-tree-node.unlocked{border-color:var(--cyan);color:var(--cyan)}
 .sk-tree-node.locked{color:var(--text3);border-color:var(--text3)}
 .sk-tree-arrow{color:var(--text3);font-size:10px}
-.sk-create-form{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:12px;max-width:400px}
+.sk-create-form{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:14px;max-width:400px}
 .sk-card{cursor:pointer}
 .sk-card .sk-desc{max-height:0;overflow:hidden;transition:max-height .2s}
 .sk-card.expanded .sk-desc{max-height:60px}
@@ -295,8 +292,12 @@ body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospa
 .cm-agent-name{font-size:9px;color:var(--gold)}
 .cm-agent-role{font-size:7px;color:var(--text2)}
 .cm-agent-skills{font-size:7px;color:var(--cyan);margin-top:2px}
-.cm-btn{padding:5px 10px;font-size:8px;font-family:'Press Start 2P',monospace;cursor:pointer;border-radius:2px;border:1px solid var(--border);background:var(--bg);color:var(--text2);transition:all .15s}
+.cm-btn{padding:5px 10px;font-size:8px;font-family:'Press Start 2P',monospace;cursor:pointer;border-radius:2px;border:1px solid var(--border);background:var(--bg);color:var(--text2);transition:all .15s;white-space:nowrap}
 .cm-btn:hover{border-color:var(--gold2);color:var(--text)}
+.cm-btn.imp{color:var(--cyan);border-color:rgba(0,255,204,0.3)}
+.cm-btn.imp:hover{background:var(--cyan2);border-color:var(--cyan)}
+.cm-btn.exp{color:var(--orange);border-color:rgba(230,126,34,0.3)}
+.cm-btn.exp:hover{background:rgba(230,126,34,0.1);border-color:var(--orange)}
 .cm-btn.share{color:var(--cyan);border-color:rgba(0,255,204,0.3)}
 .cm-btn.share:hover{background:var(--cyan2);border-color:var(--cyan)}
 .cm-btn.trade{color:var(--orange);border-color:rgba(230,126,34,0.3)}
@@ -307,13 +308,13 @@ body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospa
 .cm-user-input:focus{border-color:var(--gold)}
 .cm-user-input::placeholder{color:var(--text3)}
 .cm-trade-pending{background:var(--bg2);border:1px solid var(--orange);border-radius:4px;padding:10px;margin-bottom:8px}
-.cm-notif{display:inline-block;background:#e74c3c;color:#fff;font-size:6px;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;margin-left:5px;vertical-align:middle;font-family:'Press Start 2P',monospace}
-.ag-badge{position:absolute;top:4px;left:4px;font-size:6px;padding:2px 5px;border-radius:2px;z-index:2;font-family:'Press Start 2P',monospace;letter-spacing:0.5px}
+.cm-notif{display:inline-block;background:#e74c3c;color:#fff;font-size:7px;min-width:14px;height:14px;border-radius:7px;line-height:14px;text-align:center;padding:0 3px;margin-left:5px;vertical-align:middle;font-family:'Press Start 2P',monospace}
+.ag-badge{position:absolute;top:4px;left:4px;font-size:7px;padding:2px 5px;border-radius:2px;z-index:2;font-family:'Press Start 2P',monospace;letter-spacing:0.5px}
 .ag-badge.clone{background:rgba(155,89,182,0.2);color:var(--purple);border:1px solid rgba(155,89,182,0.4)}
 .ag-badge.lent{background:rgba(255,204,68,0.15);color:var(--gold);border:1px solid rgba(255,204,68,0.3)}
 .ag-badge.borrowed{background:rgba(0,255,204,0.1);color:var(--cyan);border:1px solid rgba(0,255,204,0.3)}
 .ag-badge.locked{background:rgba(231,76,60,0.15);color:var(--red);border:1px solid rgba(231,76,60,0.3)}
-.ag-lock-info{font-size:6px;color:var(--text3);margin-top:2px}
+.ag-lock-info{font-size:7px;color:var(--text3);margin-top:2px}
 #card-viewer-bg{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:400;align-items:center;justify-content:center}
 #card-viewer-bg.open{display:flex}
 #card-viewer{background:var(--bg2);border:3px solid var(--gold);border-radius:6px;width:380px;max-height:90vh;overflow-y:auto;box-shadow:0 0 30px rgba(255,204,68,0.15)}
@@ -344,11 +345,11 @@ body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospa
 <div class="mi ac" onclick="switchTab('agents')" data-tab="agents"><span class="ar">►</span> AGENTS</div>
 <div class="mi" onclick="switchTab('skills')" data-tab="skills"><span class="ar">►</span> SKILLS</div>
 <div class="mi" onclick="switchTab('marriage')" data-tab="marriage"><span class="ar">►</span> MARRIAGE</div>
-<div class="mi" onclick="switchTab('lineage')" data-tab="lineage"><span class="ar">►</span> LINEAGE</div>
-<div class="mi" onclick="switchTab('growth')" data-tab="growth"><span class="ar">►</span> GROWTH</div>
-<div class="mi" onclick="switchTab('create')" data-tab="create"><span class="ar">►</span> CREATE</div>
 <div class="mi" onclick="switchTab('deploy')" data-tab="deploy"><span class="ar">►</span> DEPLOY</div>
+<div class="mi" onclick="switchTab('growth')" data-tab="growth"><span class="ar">►</span> GROWTH</div>
+<div class="mi" onclick="switchTab('lineage')" data-tab="lineage"><span class="ar">►</span> LINEAGE</div>
 <div class="mi" onclick="switchTab('community')" data-tab="community"><span class="ar">►</span> COMMUNITY<span id="cm-notif-badge" class="cm-notif" style="display:none">0</span></div>
+<div class="mi" onclick="switchTab('create')" data-tab="create"><span class="ar">►</span> CREATE</div>
 <div class="mi" onclick="switchTab('info')" data-tab="info"><span class="ar">►</span> INFO</div>
 <div id="mf">8-GENTS V2.0</div>
 </div></div>
@@ -366,7 +367,6 @@ body{background:var(--bg);color:var(--text);font-family:'Press Start 2P',monospa
 <div id="m-body"></div>
 <div id="m-foot">
 <button class="m-btn m-edit" id="m-edit-btn" onclick="editLook()">EDIT LOOK</button>
-<button class="m-btn" id="m-lineage-btn" onclick="toggleLineage()" style="background:var(--purple);color:#fff;border:none;display:none">LINEAGE</button>
 <button class="m-btn" id="m-share-btn" onclick="cmShareCard(modalIdx)" style="background:var(--cyan);color:#000;border:none">SHARE LINK</button>
 <button class="m-btn m-del" id="m-del-btn" onclick="delModal()">DEL</button>
 </div>
@@ -854,8 +854,8 @@ function renderAgents(c){
   h+='<div class="ag-toolbar">';
   h+='<input placeholder="Search..." value="'+esc(agSearch)+'" oninput="agSearch=this.value;renderAgents(document.getElementById(\'cb\'))">';
   h+='<select onchange="agSort=this.value;renderAgents(document.getElementById(\'cb\'))"><option value="latest"'+(agSort==='latest'?' selected':'')+'>Latest</option><option value="name"'+(agSort==='name'?' selected':'')+'>Name</option><option value="level"'+(agSort==='level'?' selected':'')+'>Level</option><option value="status"'+(agSort==='status'?' selected':'')+'>Status</option><option value="platform"'+(agSort==='platform'?' selected':'')+'>Platform</option><option value="clone"'+(agSort==='clone'?' selected':'')+'>Clones</option><option value="borrowed"'+(agSort==='borrowed'?' selected':'')+'>Borrowed</option><option value="lent"'+(agSort==='lent'?' selected':'')+'>Lent</option></select>';
-  h+='<button class="ag-tbtn imp" onclick="document.getElementById(\'import-file\').click()">IMPORT</button>';
-  h+='<button class="ag-tbtn exp" onclick="exportSelect()">EXPORT</button>';
+  h+='<button class="cm-btn imp" onclick="document.getElementById(\'import-file\').click()">IMPORT</button>';
+  h+='<button class="cm-btn exp" onclick="exportSelect()">EXPORT</button>';
   h+='</div>';
   if(!agents.length&&!agSearch){h+='<div style="color:var(--text3);font-size:9px;padding:40px;text-align:center;line-height:2.2">No agents yet.<br><br>Go to CREATE tab.</div>';c.innerHTML=h;return}
   // Cards
@@ -884,13 +884,13 @@ function exportAll(){
 }
 function exportSelect(){
   var h='<div style="padding:20px"><div style="font-size:10px;color:var(--gold);margin-bottom:12px">EXPORT AGENTS</div>';
-  h+='<button class="ag-tbtn exp" onclick="exportAll()" style="margin-bottom:14px;padding:8px 16px;font-size:9px;width:100%">EXPORT ALL ('+agents.length+' AGENTS)</button>';
+  h+='<button class="cm-btn exp" onclick="exportAll()" style="margin-bottom:14px;padding:8px 16px;font-size:9px;width:100%">EXPORT ALL ('+agents.length+' AGENTS)</button>';
   h+='<div style="font-size:8px;color:var(--text2);margin-bottom:8px">Or select specific agents:</div>';
   agents.forEach(function(a,i){
     h+='<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;cursor:pointer;font-size:9px;color:var(--text)"><input type="checkbox" class="exp-chk" value="'+i+'"> '+esc(a.name)+' ('+esc(a.role||'—')+')</label>';
   });
-  h+='<div style="display:flex;gap:6px;margin-top:12px"><button class="ag-tbtn exp" onclick="doExportSelected()" style="padding:6px 16px;font-size:9px;flex:1">DOWNLOAD SELECTED</button>';
-  h+='<button class="ag-tbtn" onclick="renderAgents(document.getElementById(\'cb\'))" style="padding:6px 16px;font-size:9px">BACK</button></div>';
+  h+='<div style="display:flex;gap:6px;margin-top:12px"><button class="cm-btn exp" onclick="doExportSelected()" style="padding:6px 16px;font-size:9px;flex:1">DOWNLOAD SELECTED</button>';
+  h+='<button class="cm-btn" onclick="renderAgents(document.getElementById(\'cb\'))" style="padding:6px 16px;font-size:9px">BACK</button></div>';
   h+='</div>';
   document.getElementById('cb').innerHTML=h;
 }
@@ -926,8 +926,8 @@ function showImportPreview(){
   var h='<div style="font-size:10px;color:var(--gold);margin-bottom:10px">IMPORT PREVIEW</div>';
   h+='<div style="font-size:8px;color:var(--text2);margin-bottom:10px">'+pendingImport.length+' agent(s) found. Select which to import:</div>';
   h+='<div style="display:flex;gap:6px;margin-bottom:12px">';
-  h+='<button class="ag-tbtn imp" onclick="impSelectAll(true)" style="font-size:8px">SELECT ALL</button>';
-  h+='<button class="ag-tbtn" onclick="impSelectAll(false)" style="font-size:8px">DESELECT ALL</button>';
+  h+='<button class="cm-btn imp" onclick="impSelectAll(true)" style="font-size:8px">SELECT ALL</button>';
+  h+='<button class="cm-btn" onclick="impSelectAll(false)" style="font-size:8px">DESELECT ALL</button>';
   h+='</div>';
   pendingImport.forEach(function(d,i){
     var hasLook=d.body&&d.topColor;
@@ -948,7 +948,7 @@ function showImportPreview(){
   });
   h+='<div style="display:flex;gap:8px;margin-top:12px">';
   h+='<button class="sv-btn" onclick="doImportSelected()" style="flex:1;padding:10px">IMPORT SELECTED</button>';
-  h+='<button class="ag-tbtn" onclick="pendingImport=[];renderAgents(document.getElementById(\'cb\'))" style="padding:10px 16px;font-size:9px">CANCEL</button>';
+  h+='<button class="cm-btn" onclick="pendingImport=[];renderAgents(document.getElementById(\'cb\'))" style="padding:10px 16px;font-size:9px">CANCEL</button>';
   h+='</div>';
   c.innerHTML=h;
 }
@@ -1020,17 +1020,11 @@ function openModal(idx){
     h+='<div class="m-row"><span class="m-lbl">PLATFORM</span><div class="m-val" style="color:var(--text2)">'+esc(a.platform||'claude')+'</div></div>';
   }
   h+='<div class="xp-wrap"><div class="xp-label"><span>'+(isMax?'MAX LEVEL':'LV.'+lv)+'</span><span>'+(isMax?'CROWNED':''+Math.floor(xpInLv)+'/'+xpNeeded+' XP')+'</span></div><div class="xp-bar"><div class="xp-fill" style="width:'+(isMax?100:xpPct)+'%;background:'+(isMax?'var(--gold)':'var(--cyan)')+'"></div></div></div>';
-  // Lineage section (born agents only)
-  if(a._parents){
-    h+='<div id="m-lineage" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">'+renderModalLineage(a)+'</div>';
-  }
   document.getElementById('m-body').innerHTML=h;
   // Update footer buttons based on lock state
   var editBtn=document.getElementById('m-edit-btn');
   var delBtn=document.getElementById('m-del-btn');
   if(editBtn){if(isLocked){editBtn.style.display='none'}else{editBtn.style.display=''}}
-  var lineageBtn=document.getElementById('m-lineage-btn');
-  if(lineageBtn){if(a._parents){lineageBtn.style.display='';lineageBtn.textContent='LINEAGE';}else{lineageBtn.style.display='none';}}
   var shareBtn=document.getElementById('m-share-btn');
   if(shareBtn){if(!sb||!sbUser||a._isLent){shareBtn.style.display='none'}else{shareBtn.style.display=''}}
   if(delBtn){if(a._isLent||a._isBorrowed){delBtn.style.display='none'}else{delBtn.style.display=''}}
@@ -1039,14 +1033,6 @@ function openModal(idx){
 function closeModal(){document.getElementById('modal-bg').classList.remove('open');modalIdx=-1;renderTab()}
 
 
-function toggleLineage(){
-  var el=document.getElementById('m-lineage');
-  var btn=document.getElementById('m-lineage-btn');
-  if(!el)return;
-  var isOpen=el.style.display!=='none';
-  el.style.display=isOpen?'none':'block';
-  if(btn)btn.textContent=isOpen?'LINEAGE':'HIDE TREE';
-}
 
 function renderModalLineage(a){
   function findAgent(name){
@@ -1062,7 +1048,7 @@ function renderModalLineage(a){
     if(ag){h+='<div>'+renderChar(ag,2)+'</div>';}
     else{h+='<div style="height:48px;line-height:48px;color:var(--text3);font-size:8px">\u2753</div>';}
     h+='<div style="font-size:7px;color:'+(highlight?'var(--gold)':'var(--text)')+';margin-top:2px;word-break:break-word;line-height:1.4">'+esc(name)+'</div>';
-    h+='<div style="font-size:6px;color:var(--text2)">Lv.'+lv+' \u00b7 '+esc(pers)+'</div>';
+    h+='<div style="font-size:7px;color:var(--text2)">Lv.'+lv+' \u00b7 '+esc(pers)+'</div>';
     h+='</div>';
     return h;
   }
@@ -2006,7 +1992,7 @@ function renderSkTree(h,c){
         if(owns){
           h+='<div class="sk-tree-node unlocked">'+sk+'</div>';
         } else if(canLearn&&!agBlocked){
-          h+='<div class="sk-tree-node locked" style="cursor:pointer;border-color:var(--gold);color:var(--gold)" onclick="event.stopPropagation();buySkill(\''+esc(sk).replace(/'/g,"\\'")+'\','+cost+')" title="Click to learn ('+cost+' XP)">'+sk+' <span style="font-size:6px;color:var(--cyan)">+</span></div>';
+          h+='<div class="sk-tree-node locked" style="cursor:pointer;border-color:var(--gold);color:var(--gold)" onclick="event.stopPropagation();buySkill(\''+esc(sk).replace(/'/g,"\\'")+'\','+cost+')" title="Click to learn ('+cost+' XP)">'+sk+' <span style="font-size:7px;color:var(--cyan)">+</span></div>';
         } else {
           h+='<div class="sk-tree-node locked" title="'+(canLearn&&agBlocked?'Agent is locked':'Learn '+path[idx-1]+' first')+'">'+sk+'</div>';
         }
@@ -2048,8 +2034,8 @@ function renderSkMy(h,c){
           h+='</div>';
         }
         h+='<div style="display:flex;gap:4px;margin-top:8px">';
-        h+='<button class="ag-tbtn" onclick="event.stopPropagation();publishSkillFromCard('+i+')" style="font-size:7px;color:var(--cyan);border-color:var(--cyan)">PUBLISH</button>';
-        h+='<button class="ag-tbtn" onclick="event.stopPropagation();delCustomSkill('+i+')" style="font-size:7px;color:var(--red);border-color:var(--red)">DELETE</button>';
+        h+='<button class="cm-btn" onclick="event.stopPropagation();publishSkillFromCard('+i+')" style="font-size:7px;color:var(--cyan);border-color:var(--cyan)">PUBLISH</button>';
+        h+='<button class="cm-btn" onclick="event.stopPropagation();delCustomSkill('+i+')" style="font-size:7px;color:var(--red);border-color:var(--red)">DELETE</button>';
         h+='</div>';
       } else {
         h+='<div class="sk-desc">'+esc(s.desc||'No description')+'</div>';
@@ -2127,8 +2113,8 @@ function renderSkCreate(h,c){
       h+='<div class="sk-desc">'+esc(s.desc)+'</div>';
       h+='<span class="sk-tier sk-tier-'+s.tier+'">'+s.tier+'</span><span class="sk-cost">'+s.cost+' XP</span><br>';
       h+='<div style="display:flex;gap:4px;margin-top:4px">';
-      h+='<button class="ag-tbtn" onclick="event.stopPropagation();publishSkillFromCard('+i+')" style="font-size:7px;color:var(--cyan);border-color:var(--cyan)">PUBLISH</button>';
-      h+='<button class="ag-tbtn" onclick="event.stopPropagation();delCustomSkill('+i+')" style="font-size:7px;color:var(--red);border-color:var(--red)">DELETE</button>';
+      h+='<button class="cm-btn" onclick="event.stopPropagation();publishSkillFromCard('+i+')" style="font-size:7px;color:var(--cyan);border-color:var(--cyan)">PUBLISH</button>';
+      h+='<button class="cm-btn" onclick="event.stopPropagation();delCustomSkill('+i+')" style="font-size:7px;color:var(--red);border-color:var(--red)">DELETE</button>';
       h+='</div></div>';
     });
     h+='</div>';
@@ -2580,9 +2566,9 @@ function renderDeploy(c){
     h+='<div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">';
     if(dpAgent2>=0&&agents[dpAgent2]){
       h+='<span style="font-size:8px;color:var(--cyan)">\u00d7 COLLAB: '+esc(agents[dpAgent2].name)+'</span>';
-      h+='<button class="ag-tbtn" onclick="dpClearCollab()" style="font-size:7px;color:var(--red);border-color:var(--red)">REMOVE</button>';
+      h+='<button class="cm-btn" onclick="dpClearCollab()" style="font-size:7px;color:var(--red);border-color:var(--red)">REMOVE</button>';
     } else {
-      h+='<button class="ag-tbtn" onclick="dpToggleCollabPicker()" style="font-size:7px;color:var(--cyan);border-color:var(--cyan)">'+(dpShowCollab?'\u25b2 CANCEL':'+  ADD COLLAB AGENT')+'</button>';
+      h+='<button class="cm-btn" onclick="dpToggleCollabPicker()" style="font-size:7px;color:var(--cyan);border-color:var(--cyan)">'+(dpShowCollab?'\u25b2 CANCEL':'+  ADD COLLAB AGENT')+'</button>';
     }
     h+='</div>';
     if(dpShowCollab&&dpAgent2<0){
@@ -2615,10 +2601,10 @@ function renderDeploy(c){
   h+='<div style="font-size:9px;color:var(--gold);margin-bottom:4px">DEPLOY TO PLATFORM</div>';
   h+='<div style="font-size:7px;color:var(--text2);margin-bottom:10px">Open your agent directly in the AI platform \u2014 no API key needed</div>';
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
-  h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'claude\')" style="font-size:8px;padding:7px 12px;background:rgba(230,126,34,0.12);color:#f0834a;border-color:#f0834a">OPEN IN CLAUDE</button>';
-  h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'chatgpt\')" style="font-size:8px;padding:7px 12px;background:rgba(16,163,127,0.12);color:#10a37f;border-color:#10a37f">OPEN IN CHATGPT</button>';
-  h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'perplexity\')" style="font-size:8px;padding:7px 12px;background:rgba(32,144,253,0.12);color:#2090fd;border-color:#2090fd">OPEN IN PERPLEXITY</button>';
-  h+='<button class="ag-tbtn" onclick="dpLaunchPlatform(\'grok\')" style="font-size:8px;padding:7px 12px;background:rgba(255,255,255,0.05);color:#e0e0e0;border-color:#888">OPEN IN GROK</button>';
+  h+='<button class="cm-btn" onclick="dpLaunchPlatform(\'claude\')" style="font-size:8px;padding:7px 12px;background:rgba(230,126,34,0.12);color:#f0834a;border-color:#f0834a">OPEN IN CLAUDE</button>';
+  h+='<button class="cm-btn" onclick="dpLaunchPlatform(\'chatgpt\')" style="font-size:8px;padding:7px 12px;background:rgba(16,163,127,0.12);color:#10a37f;border-color:#10a37f">OPEN IN CHATGPT</button>';
+  h+='<button class="cm-btn" onclick="dpLaunchPlatform(\'perplexity\')" style="font-size:8px;padding:7px 12px;background:rgba(32,144,253,0.12);color:#2090fd;border-color:#2090fd">OPEN IN PERPLEXITY</button>';
+  h+='<button class="cm-btn" onclick="dpLaunchPlatform(\'grok\')" style="font-size:8px;padding:7px 12px;background:rgba(255,255,255,0.05);color:#e0e0e0;border-color:#888">OPEN IN GROK</button>';
   h+='</div></div>';
 
   // Setup panel
@@ -2657,7 +2643,7 @@ function renderDeploy(c){
   h+='<div style="font-size:8px;color:var(--gold2);margin:10px 0 4px">GENERATED SYSTEM PROMPT</div>';
   var prompt=dpAgent2>=0&&agents[dpAgent2]?dpCollabGenPrompt(a,agents[dpAgent2]):dpGenPrompt(a);
   h+='<div class="dp-prompt-box" id="dp-prompt">'+esc(prompt)+'</div>';
-  h+='<button class="ag-tbtn" onclick="dpCopyPrompt()" style="font-size:7px;color:var(--cyan);border-color:var(--cyan);margin-top:4px">COPY TO CLIPBOARD</button>';
+  h+='<button class="cm-btn" onclick="dpCopyPrompt()" style="font-size:7px;color:var(--cyan);border-color:var(--cyan);margin-top:4px">COPY TO CLIPBOARD</button>';
   h+='</div>';
 
   // Chat interface
@@ -3492,7 +3478,7 @@ function cmAgentPreviewCard(ag){
   h+='<div style="font-size:7px;color:var(--text2);margin-bottom:2px">'+esc(ag.role||'no role')+'</div>';
   h+='<div style="font-size:7px;color:var(--cyan);margin-bottom:4px">LV.'+lv+' \u00b7 '+esc(ag.personality||'?')+'</div>';
   if(skills.length){
-    h+='<div style="font-size:6px;color:var(--text2);line-height:1.8">';
+    h+='<div style="font-size:7px;color:var(--text2);line-height:1.8">';
     skills.forEach(function(s){h+='<span style="display:inline-block;background:var(--bg2);border:1px solid var(--border);border-radius:2px;padding:1px 4px;margin:1px">'+esc(s)+'</span>';});
     if(extra>0)h+='<span style="color:var(--text2)"> +'+extra+' more</span>';
     h+='</div>';
@@ -3870,7 +3856,7 @@ async function cmLoadFriends(){
         var unread=unreadCounts[f.friend_id]||0;
         var isActive=cmChatFriend&&cmChatFriend.id===f.friend_id;
         var chatStyle='padding:3px 6px;font-size:7px;color:var(--cyan);border-color:rgba(0,255,204,0.3)'+(isActive?';background:var(--cyan2)':'');
-        var badge=unread?'<span style="background:var(--red);color:#fff;border-radius:50%;font-size:6px;padding:1px 4px;margin-left:3px">'+unread+'</span>':'';
+        var badge=unread?'<span style="background:var(--red);color:#fff;border-radius:50%;font-size:7px;padding:1px 4px;margin-left:3px">'+unread+'</span>':'';
         h+='<div class="cm-agent-row">';
         h+='<div class="cm-agent-info"><div class="cm-agent-name">'+esc(f.friend_username)+'</div></div>';
         h+='<button class="cm-btn share" onclick="cmFriendAction(\'share\',\''+esc(f.friend_username).replace(/'/g,"\\'")+'\')" style="padding:3px 6px;font-size:7px">SHARE</button> ';
@@ -3991,7 +3977,7 @@ async function cmLoadMessages(friendId){
       var ts=t.getHours().toString().padStart(2,'0')+':'+t.getMinutes().toString().padStart(2,'0');
       msgsHtml+='<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+'">';
       msgsHtml+='<div style="max-width:85%;padding:6px 10px;border-radius:4px;font-size:8px;line-height:1.6;word-break:break-word;background:'+(isMe?'rgba(255,204,68,0.12)':'var(--bg2)')+';border:1px solid '+(isMe?'rgba(255,204,68,0.3)':'var(--border)')+'">'+esc(m.message)+'</div>';
-      msgsHtml+='<div style="font-size:6px;color:var(--text2);margin-top:2px">'+ts+'</div>';
+      msgsHtml+='<div style="font-size:7px;color:var(--text2);margin-top:2px">'+ts+'</div>';
       msgsHtml+='</div>';
     });
     var existingMsgs=document.getElementById('cm-chat-msgs');
@@ -4144,7 +4130,7 @@ function renderLineage(c){
     h+='<div onclick="selectLineageAgent('+i+')" style="cursor:pointer;background:'+bg+';border:'+border+';border-radius:4px;padding:6px 8px;text-align:center;min-width:70px;flex-shrink:0">';
     h+='<div>'+renderChar(a,2)+'</div>';
     h+='<div style="font-size:7px;color:'+(isSelected?'var(--gold)':'var(--text)')+';margin-top:2px;word-break:break-word">'+esc(a.name)+'</div>';
-    h+='<div style="font-size:6px;color:var(--text2)">Gen '+gen+'</div>';
+    h+='<div style="font-size:7px;color:var(--text2)">Gen '+gen+'</div>';
     h+='</div>';
   });
   h+='</div>';
@@ -4173,7 +4159,7 @@ function renderLineage(c){
     if(ag){h+='<div>'+renderChar(ag,2)+'</div>';}
     else{h+='<div style="height:48px;line-height:48px;color:var(--text3);font-size:10px">\u2753</div>';}
     h+='<div style="font-size:7px;color:'+nameColor+';margin-top:2px;word-break:break-word;line-height:1.4">'+esc(name||'?')+'</div>';
-    h+='<div style="font-size:6px;color:var(--text2)">Lv.'+lv+' \u00b7 '+esc(pers)+'</div>';
+    h+='<div style="font-size:7px;color:var(--text2)">Lv.'+lv+' \u00b7 '+esc(pers)+'</div>';
     h+='</div>';
     return h;
   }
