@@ -2832,6 +2832,11 @@ function dpLaunchPlatform(platform){
 function dpEndSession(){
   if(dpAgent<0)return;
   var a=agents[dpAgent];
+  dpStats.tasks++;
+  if(a._isClone&&(a._cloneTasksDone||0)<3){
+    a._cloneTasksDone=(a._cloneTasksDone||0)+1;
+    if(a._cloneTasksDone>=3)alert(a.name+' clone unlocked! You can now edit this agent.');
+  }
   a.state='done';
   a._doneClaimed=false;
   delete a._workStart;
@@ -2846,9 +2851,14 @@ function dpEndSession(){
     },60000);
   })(dpAgent);
   if(dpAgent2>=0&&agents[dpAgent2]){
-    agents[dpAgent2].state='done';
-    agents[dpAgent2]._doneClaimed=false;
-    delete agents[dpAgent2]._workStart;
+    var a2=agents[dpAgent2];
+    if(a2._isClone&&(a2._cloneTasksDone||0)<3){
+      a2._cloneTasksDone=(a2._cloneTasksDone||0)+1;
+      if(a2._cloneTasksDone>=3)alert(a2.name+' clone unlocked! You can now edit this agent.');
+    }
+    a2.state='done';
+    a2._doneClaimed=false;
+    delete a2._workStart;
     (function(idx){
       setTimeout(function(){
         if(agents[idx]&&agents[idx].state==='done'){
