@@ -3414,6 +3414,7 @@ async function cmLendAgent(idx){
   if(!sb||!sbUser)return;
   var target=document.getElementById('cm-lend-user');
   if(!target||!target.value.trim()){alert('Enter borrower username');return}
+  if(agents[idx]._isLent){alert('This agent is already on loan.');return}
   if(agents[idx]._isBorrowed){alert('Borrowed agents cannot be lent.');return}
   if(agents[idx].state==='working'||agents[idx].state==='collab'){alert('This agent is currently deployed. Stop the deployment first.');return}
   var btn=event&&event.target;if(btn)btn.disabled=true;
