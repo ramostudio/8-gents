@@ -2578,8 +2578,8 @@ function renderDeploy(c){
   h+='<div style="font-size:9px;color:var(--gold);margin-bottom:8px">SELECT AGENT TO DEPLOY</div>';
   h+='<div class="dp-agent-sel">';
   agents.forEach(function(a,i){
-    if(a._isLent||a._pendingTrade){
-      h+='<button class="sk-tab" disabled style="opacity:0.3;cursor:not-allowed">'+esc(a.name)+'</button>';
+    if(a._isLent||a._pendingTrade||(i===dpAgent&&(a.state==='working'||a.state==='collab'))){
+      h+='<button class="sk-tab'+(dpAgent===i?' ac':'')+'" disabled style="opacity:0.3;cursor:not-allowed">'+esc(a.name)+'</button>';
     } else {
       h+='<button class="sk-tab'+(dpAgent===i?' ac':'')+'" onclick="dpSelectAgent('+i+')">'+esc(a.name)+'</button>';
     }
