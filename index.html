@@ -799,40 +799,7 @@ function drawMonster(P,a,body,topC,botC,hatC,accC){
 var PG={agents:{t:'AGENTS ROSTER',s:'your deployed agents'},create:{t:'CREATE AGENT',s:'birth a new agent'},marriage:{t:'MARRIAGE CHAMBER',s:'merge two agents'},lineage:{t:'LINEAGE',s:'family trees and dynasties'},skills:{t:'SKILL LIBRARY',s:'all skills across agents'},deploy:{t:'DEPLOYMENT PANEL',s:'send agents to work'},growth:{t:'GROWTH SYSTEM',s:'agent progression'},community:{t:'COMMUNITY',s:'trade, share, connect'},info:{t:'INFO',s:'guide, privacy, about'}};
 function switchTab(t){
   if(t!=='community')cmCloseChat();
-  // Auto-done: set deploy agents to done state when leaving deploy tab
   if(curTab==='deploy'&&t!=='deploy'){
-    if(dpAgent>=0&&agents[dpAgent]){
-      var da=agents[dpAgent];
-      if(da.state==='working'||da.state==='collab'){
-        da.state='done';da._doneClaimed=false;
-        (function(idx){
-          setTimeout(function(){
-            if(agents[idx]&&agents[idx].state==='done'){
-              agents[idx].state='idle';
-              agents[idx]._workStart=null;
-              save();
-              if(curTab==='agents'||curTab==='growth')renderTab();
-            }
-          },60000);
-        })(dpAgent);
-      }
-    }
-    if(dpAgent2>=0&&agents[dpAgent2]){
-      var da2=agents[dpAgent2];
-      if(da2.state==='working'||da2.state==='collab'){
-        da2.state='done';da2._doneClaimed=false;
-        (function(idx){
-          setTimeout(function(){
-            if(agents[idx]&&agents[idx].state==='done'){
-              agents[idx].state='idle';
-              agents[idx]._workStart=null;
-              save();
-              if(curTab==='agents'||curTab==='growth')renderTab();
-            }
-          },60000);
-        })(dpAgent2);
-      }
-    }
     dpAgent2=-1;dpShowCollab=false;
     save();
   }
