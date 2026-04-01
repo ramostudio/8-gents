@@ -803,11 +803,35 @@ function switchTab(t){
   if(curTab==='deploy'&&t!=='deploy'){
     if(dpAgent>=0&&agents[dpAgent]){
       var da=agents[dpAgent];
-      if(da.state==='working'||da.state==='collab'){da.state='done';da._doneClaimed=false;}
+      if(da.state==='working'||da.state==='collab'){
+        da.state='done';da._doneClaimed=false;
+        (function(idx){
+          setTimeout(function(){
+            if(agents[idx]&&agents[idx].state==='done'){
+              agents[idx].state='idle';
+              agents[idx]._workStart=null;
+              save();
+              if(curTab==='agents'||curTab==='growth')renderTab();
+            }
+          },60000);
+        })(dpAgent);
+      }
     }
     if(dpAgent2>=0&&agents[dpAgent2]){
       var da2=agents[dpAgent2];
-      if(da2.state==='working'||da2.state==='collab'){da2.state='done';da2._doneClaimed=false;}
+      if(da2.state==='working'||da2.state==='collab'){
+        da2.state='done';da2._doneClaimed=false;
+        (function(idx){
+          setTimeout(function(){
+            if(agents[idx]&&agents[idx].state==='done'){
+              agents[idx].state='idle';
+              agents[idx]._workStart=null;
+              save();
+              if(curTab==='agents'||curTab==='growth')renderTab();
+            }
+          },60000);
+        })(dpAgent2);
+      }
     }
     dpAgent2=-1;dpShowCollab=false;
     save();
@@ -2811,10 +2835,30 @@ function dpEndSession(){
   a.state='done';
   a._doneClaimed=false;
   delete a._workStart;
+  (function(idx){
+    setTimeout(function(){
+      if(agents[idx]&&agents[idx].state==='done'){
+        agents[idx].state='idle';
+        agents[idx]._workStart=null;
+        save();
+        if(curTab==='agents'||curTab==='growth')renderTab();
+      }
+    },60000);
+  })(dpAgent);
   if(dpAgent2>=0&&agents[dpAgent2]){
     agents[dpAgent2].state='done';
     agents[dpAgent2]._doneClaimed=false;
     delete agents[dpAgent2]._workStart;
+    (function(idx){
+      setTimeout(function(){
+        if(agents[idx]&&agents[idx].state==='done'){
+          agents[idx].state='idle';
+          agents[idx]._workStart=null;
+          save();
+          if(curTab==='agents'||curTab==='growth')renderTab();
+        }
+      },60000);
+    })(dpAgent2);
   }
   save();
   renderTab();
